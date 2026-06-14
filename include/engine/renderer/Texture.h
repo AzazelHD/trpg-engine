@@ -1,31 +1,42 @@
 #pragma once
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
 
-// Texture wraps an SDL_Texture. Loads from file, exposes dimensions.
-// Textures are created once and reused — never load the same file twice.
+// Texture wraps a GPU texture resource.
+// Loads from file via engine renderer backend.
+// Stores width/height for fast access.
 //
-// [x]: Declare the class with:
-//   - Constructor: Texture(SDL_Renderer* renderer, const char* filePath)
-//                  Use IMG_Load + SDL_CreateTextureFromSurface, then free the surface.
-//   - Destructor: SDL_DestroyTexture
-//   - getWidth(), getHeight() — read from SDL_QueryTexture in the constructor and cache.
-//   - getSDLTexture() — returns the raw SDL_Texture* (used internally by SpriteBatch).
+// Design rule:
+// - SDL is NOT exposed in this API
+// - Texture is backend-agnostic
+// - Only renderer implementation may access GPU handle
 //
-// Design note: do NOT forward-declare SDL_Renderer/SDL_Texture in this header —
-// they are C structs and forward-declaration is messy. Just include SDL.h and SDL_image.h
-// only in Texture.cpp, and use void* or a pimpl if you want zero SDL in the header.
-// For simplicity at this stage, it's acceptable to include SDL here.
+// Lifetime:
+// - created by engine resource system or renderer
+// - destroyed automatically
+//
+// [x] Define constructor (filePath-based loading via backend renderer)
+// [x] Implement destructor (free backend GPU resource)
+// [x] Store width/height after loading
+
+struct SDL_Renderer;
+
 class Texture
 {
-private:
-    SDL_Texture *m_texture;
-    int m_width, m_height;
-
 public:
-    Texture(SDL_Renderer *renderer, const char *filePath);
+    explicit Texture(SDL_Renderer *renderer, const char *filePath);
     ~Texture();
+
+    Texture(const Texture &) = delete;
+    Texture &operator=(const Texture &) = delete;
+
     int getWidth() const;
     int getHeight() const;
-    SDL_Texture *getSDL_Texture() const;
+
+private:
+    friend class SpriteBatch;
+
+    void *getNativeHandle() const { return m_texture; }
+
+    void *m_texture = nullptr;
+    int m_width = 0;
+    int m_height = 0;
 };

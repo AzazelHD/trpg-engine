@@ -30,7 +30,7 @@ engine/
 │   ├── math/          (Vec2, Rect, MathUtils)
 │   ├── renderer/      (Camera, Texture, SpriteBatch, TileLayer)
 │   ├── scene/         (Scene, SceneStack)
-│   ├── statemachine/  (IState, StateMachine compatibility)
+│   ├── statemachine/  (StateMachine compatibility)
 │   └── ui/            (Button, MenuPanel, Slider, TextLabel)
 └── src/engine/
     ├── core/

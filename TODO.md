@@ -107,10 +107,8 @@ Checkpoint: Engine can render textures on screen using a camera-driven pipeline.
 
 - [x] Introduce generic Scene lifecycle base  
        Edit/create: [Scene.h](include/engine/scene/Scene.h)
-- [x] Keep IState compatibility wrapper for existing game code  
-       Edit/create: [IState.h](include/engine/statemachine/IState.h)
 - [x] Implement StateMachine<T> / SceneStack<T> (push / pop / replace / update / render / isEmpty)  
-       Edit/create: [StateMachine.h](include/engine/statemachine/StateMachine.h), [SceneStack.h](include/engine/scene/SceneStack.h)
+       Edit/create: [StateMachine.h](include/engine/statemachine/StateMachine.h)
 - [x] Implement Button primitive  
        Edit/create: [Button.h](include/engine/ui/Button.h), [Button.cpp](src/engine/ui/Button.cpp)
 - [x] Implement MenuPanel input/navigation  
