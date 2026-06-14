@@ -1,0 +1,32 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20
+  },
+  "configurePresets": [
+    {
+      "name": "engine",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/build",
+      "toolchainFile": "${sourceDir}/cmake/toolchains/trpg-vcpkg-toolchain.cmake",
+      "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/../install"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "engine-debug",
+      "configurePreset": "engine",
+      "configuration": "Debug"
+    },
+    {
+      "name": "engine-release",
+      "configurePreset": "engine",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": []
+}

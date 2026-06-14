@@ -1,0 +1,10 @@
+^H:\CODING\GAMES\TRPG\ENGINE\BUILD\CMAKEFILES\2F35D8DBA7AA9B4F8EA9AAEF97E37224\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SH:/Coding/Games/TRPG/engine -BH:/Coding/Games/TRPG/engine/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file H:/Coding/Games/TRPG/engine/build/TRPGEngine.slnx
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

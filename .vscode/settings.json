@@ -1,0 +1,18 @@
+{
+  "cmake.useCMakePresets": "always",
+  "cmake.configureOnOpen": false,
+  "cmake.configureOnEdit": false,
+  "files.exclude": {
+    "install": true
+  },
+  "search.exclude": {
+    "install": true
+  },
+  "python-envs.pythonProjects": [
+    {
+      "path": ".",
+      "envManager": "ms-python.python:venv",
+      "packageManager": "ms-python.python:pip"
+    }
+  ]
+}
