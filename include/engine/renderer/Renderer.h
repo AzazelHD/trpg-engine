@@ -1,10 +1,12 @@
 #pragma once
 #include <string>
 #include <vector>
+#include "engine/renderer/Font.h"
 #include "engine/renderer/Color.h"
 #include "engine/math/Vec2.h"
 #include "engine/math/Rect.h"
 
+class Font;
 class Texture;
 struct SDL_Renderer;
 
@@ -136,12 +138,27 @@ public:
                       const std::vector<int> &indices);
 
     // --- Textures ---
+    Font *loadFont(const char *filePath, float size);
+
     Texture *loadTexture(const char *filePath);
 
     Vec2f getTextureSize(const Texture *texture) const;
 
     void setTextureAlphaMod(const Texture *texture, float alpha);
     void setTextureScaleMode(const Texture *texture, ScaleMode mode);
+
+    // Renders text using a font in a single immediate-mode call.
+    // Internally: TTF_RenderText_Blended → SDL_CreateTextureFromSurface → SDL_RenderTexture.
+    // No caching or batching; texture is recreated every call.
+    //
+    // Parameters:
+    // - font: font resource to use
+    // - text: UTF-8 string to render
+    // - pos: screen position
+    // - color: text color
+    // - bold/italic/underline: style flags applied per call
+    void renderText(const Font *font, const std::string &text, Vec2f pos, Color color,
+                    bool bold = false, bool italic = false, bool underline = false);
 
     void drawTexture(const Texture *texture,
                      Recti src,

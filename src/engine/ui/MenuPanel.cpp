@@ -1,4 +1,5 @@
 #include "engine/ui/MenuPanel.h"
+#include "engine/renderer/Renderer.h"
 
 // [x] Adds button (copy version), applies panel offset and selection refresh
 void MenuPanel::addButton(const Button &button)
@@ -45,7 +46,7 @@ bool MenuPanel::handleInput(bool moveUp, bool moveDown, bool confirm)
 }
 
 // [x] Renders all buttons in panel
-void MenuPanel::render(SDL_Renderer *renderer) const
+void MenuPanel::render(Renderer *renderer) const
 {
     for (const Button &button : m_buttons)
     {

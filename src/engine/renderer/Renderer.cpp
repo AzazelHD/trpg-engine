@@ -1,7 +1,9 @@
+#include "engine/renderer/Font.h"
 #include "engine/renderer/Texture.h"
 #include "engine/renderer/Renderer.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3_image/SDL_image.h>
 
 namespace
@@ -146,6 +148,20 @@ void Renderer::drawGeometry(const std::vector<Vertex> &vertices,
 // Textures
 // -----------------------------------------------------------------------------
 
+// [x] loadFont(): TTF_OpenFont wrapper. Returns nullptr on failure.
+Font *Renderer::loadFont(const char *filePath, float size)
+{
+    TTF_Font *ttfFont = TTF_OpenFont(filePath, size);
+    if (!ttfFont)
+        return nullptr;
+
+    auto *font = new Font();
+    font->m_font = ttfFont;
+    font->m_size = size;
+
+    return font;
+}
+
 // [x] loadTexture(): IMG_Load + SDL_CreateTextureFromSurface using m_renderer.
 //       Returns nullptr on failure. Caller owns the result.
 Texture *Renderer::loadTexture(const char *filePath)
@@ -203,6 +219,42 @@ void Renderer::setTextureScaleMode(const Texture *texture, ScaleMode mode)
         mode == ScaleMode::Linear
             ? SDL_SCALEMODE_LINEAR
             : SDL_SCALEMODE_NEAREST);
+}
+
+// [x] renderText(): TTF_RenderText_Blended -> surface -> texture -> render -> destroy.
+void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, Color color,
+                          bool bold, bool italic, bool underline)
+{
+    if (!font || !font->m_font || text.empty())
+        return;
+
+    TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
+
+    int style = TTF_STYLE_NORMAL;
+    if (bold)
+        style |= TTF_STYLE_BOLD;
+    if (italic)
+        style |= TTF_STYLE_ITALIC;
+    if (underline)
+        style |= TTF_STYLE_UNDERLINE;
+    TTF_SetFontStyle(ttfFont, style);
+
+    SDL_Color sdlColor{color.r, color.g, color.b, color.a};
+    SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
+    if (!surface)
+        return;
+
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(m_renderer, surface);
+    SDL_DestroySurface(surface);
+    if (!texture)
+        return;
+
+    float w = 0.f, h = 0.f;
+    SDL_GetTextureSize(texture, &w, &h);
+
+    SDL_FRect dst{pos.x, pos.y, w, h};
+    SDL_RenderTexture(m_renderer, texture, nullptr, &dst);
+    SDL_DestroyTexture(texture);
 }
 
 // [x] drawTexture(): SDL_RenderTexture, or SDL_RenderTextureRotated(angle=0, flip=H)

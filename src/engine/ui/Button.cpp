@@ -2,14 +2,6 @@
 
 #include <utility>
 
-namespace
-{
-    [[nodiscard]] SDL_FRect toSDLRect(const Rectf &rect)
-    {
-        return SDL_FRect{rect.x, rect.y, rect.w, rect.h};
-    }
-}
-
 Button::Button(Rectf rect, std::string text)
     : m_rect(rect),
       m_text(std::move(text)),
@@ -25,35 +17,33 @@ bool Button::activate() const
     return m_enabled;
 }
 
-void Button::render(SDL_Renderer *renderer) const
+void Button::render(Renderer *renderer) const
 {
-    if (renderer == nullptr)
-    {
-        return;
-    }
+    if (!renderer)
 
-    const SDL_FRect buttonRect = toSDLRect(m_rect);
-    SDL_Color fillColor = m_enabled ? SDL_Color{60, 60, 60, 255} : SDL_Color{96, 96, 96, 255};
-    SDL_Color borderColor = m_enabled ? SDL_Color{32, 32, 32, 255} : SDL_Color{128, 128, 128, 255};
-    SDL_Color textColor = SDL_Color{240, 240, 240, 255};
+        return;
+
+    Color fillColor = m_enabled ? Color{60, 60, 60, 255} : Color{96, 96, 96, 255};
+    Color borderColor = m_enabled ? Color{32, 32, 32, 255} : Color{128, 128, 128, 255};
+    Color textColor = Color{240, 240, 240, 255};
 
     if (m_enabled && m_selected)
     {
-        fillColor = SDL_Color{200, 40, 40, 255};
-        borderColor = SDL_Color{255, 120, 120, 255};
-        textColor = SDL_Color{255, 255, 255, 255};
+        fillColor = Color{200, 40, 40, 255};
+        borderColor = Color{255, 120, 120, 255};
+        textColor = Color{255, 255, 255, 255};
     }
 
-    SDL_SetRenderDrawColor(renderer, fillColor.r, fillColor.g, fillColor.b, fillColor.a);
-    SDL_RenderFillRect(renderer, &buttonRect);
+    renderer->setDrawColor(fillColor);
+    renderer->fillRect(m_rect);
 
-    SDL_SetRenderDrawColor(renderer, borderColor.r, borderColor.g, borderColor.b, borderColor.a);
-    SDL_RenderRect(renderer, &buttonRect);
+    renderer->setDrawColor(borderColor);
+    renderer->drawRect(m_rect);
 
-    SDL_SetRenderDrawColor(renderer, textColor.r, textColor.g, textColor.b, textColor.a);
+    renderer->setDrawColor(textColor);
     const float textX = m_rect.x + 16.0f;
     const float textY = m_rect.y + (m_rect.h - 12.0f) * 0.5f;
-    SDL_RenderDebugText(renderer, textX, textY, m_text.c_str());
+    renderer->drawDebugText({textX, textY}, m_text.c_str());
 }
 
 void Button::setEnabled(bool enabled)

@@ -55,7 +55,7 @@ void Slider::handleDrag(int mouseX, int mouseY, bool dragging)
 
 // [x]: Renders slider track + handle using normalized value mapping.
 //      Render depends on normalized state only (no input logic here).
-void Slider::render(SDL_Renderer *renderer) const
+void Slider::render(Renderer *renderer) const
 {
     if (!renderer || m_track.w <= 0.0f || m_max == m_min)
         return;
@@ -67,8 +67,8 @@ void Slider::render(SDL_Renderer *renderer) const
         m_track.w,
         m_track.h};
 
-    SDL_SetRenderDrawColor(renderer, 80, 80, 80, 255);
-    SDL_RenderFillRect(renderer, &trackRect);
+    renderer->setDrawColor(Color{80, 80, 80, 255});
+    renderer->fillRect({trackRect.x, trackRect.y, trackRect.w, trackRect.h});
 
     // --- Normalized value [0..1] ---
     const float t = normalized();
@@ -82,8 +82,8 @@ void Slider::render(SDL_Renderer *renderer) const
         10.0f,
         m_track.h + 4.0f};
 
-    SDL_SetRenderDrawColor(renderer, 220, 220, 220, 255);
-    SDL_RenderFillRect(renderer, &handleRect);
+    renderer->setDrawColor(Color{220, 220, 220, 255});
+    renderer->fillRect({handleRect.x, handleRect.y, handleRect.w, handleRect.h});
 }
 
 // [x]: Increments/decrements value by delta (used for keyboard/controller input)

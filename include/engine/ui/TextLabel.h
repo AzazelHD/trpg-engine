@@ -1,9 +1,11 @@
 #pragma once
 
-#include <SDL3/SDL.h>
-#include <SDL3_ttf/SDL_ttf.h>
-#include <string>
 #include "engine/math/Vec2.h"
+#include "engine/renderer/Color.h"
+#include "engine/renderer/Font.h"
+#include "engine/renderer/Renderer.h"
+
+#include <string>
 
 // [x] TextLabel UI component for rendering single-line UI text using SDL_ttf.
 //     Handles font rendering, color, positioning, and basic style flags (bold/italic/underline).
@@ -33,21 +35,21 @@ public:
 
     void setText(std::string text);
     void setPosition(Vec2f position);
-    void setColor(SDL_Color color);
-    void setFont(TTF_Font *font);
+    void setColor(Color color);
+    void setFont(Font *font);
 
     void setStyle(const TextStyle &style);
     void setAnimation(const TextAnimation &animation);
 
     void update(float dt);
-    void render(SDL_Renderer *renderer);
+    void render(Renderer *renderer);
 
 private:
     std::string m_text;
     Vec2f m_position{0.f, 0.f};
-    SDL_Color m_color{255, 255, 255, 255};
+    Color m_color{255, 255, 255, 255};
 
-    TTF_Font *m_font = nullptr;
+    Font *m_font = nullptr;
 
     TextStyle m_style{};
     TextAnimation m_animation{};

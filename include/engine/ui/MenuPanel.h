@@ -1,11 +1,11 @@
 #pragma once
 
-#include <SDL3/SDL.h>
 #include <vector>
 #include "engine/math/Vec2.h"
 #include "engine/ui/Button.h"
 #include "engine/ui/FocusGroup.h"
 #include "engine/ui/VerticalLayout.h"
+#include "engine/renderer/Renderer.h"
 
 // MenuPanel manages a vertical list of selectable buttons.
 //
@@ -32,7 +32,7 @@ public:
     void addButton(const Button &button);
     void addButton(Button &&button);
     bool handleInput(bool moveUp, bool moveDown, bool confirm);
-    void render(SDL_Renderer *renderer) const;
+    void render(Renderer *renderer) const;
     void setPosition(Vec2f position);
     void setVerticalLayout(const VerticalLayoutConfig &layout);
     void clearLayout();
