@@ -1,7 +1,6 @@
 #include "engine/renderer/Camera.h"
 #include "engine/renderer/TileLayer.h"
 #include "engine/renderer/SpriteBatch.h"
-#include <SDL3/SDL.h>
 
 // Checklist — mark with [x] once done:
 //
@@ -96,7 +95,7 @@ void TileLayer::render(SpriteBatch &batch, const Camera &camera, Vec2f screenSiz
             // Convert a 1-based tile index to a source rect in the sprite sheet.
             //   col = (index - 1) % tilesPerRow   -> horizontal offset in sheet
             //   row = (index - 1) / tilesPerRow   -> vertical offset in sheet
-            const SDL_Rect src{
+            const Recti src{
                 srcX,
                 srcY,
                 m_tileW,
@@ -105,17 +104,17 @@ void TileLayer::render(SpriteBatch &batch, const Camera &camera, Vec2f screenSiz
             // tileToScreen gives the top-left screen pixel of this tile's iso diamond.
             const Vec2f screenPos = camera.tileToScreen(Vec2i{x, y});
 
-            const SDL_Rect dst{
-                static_cast<int>(screenPos.x),
-                static_cast<int>(screenPos.y),
-                dstW,
-                dstH};
+            const Rectf dst{
+                screenPos.x,
+                screenPos.y,
+                static_cast<float>(dstW),
+                static_cast<float>(dstH)};
 
             // Culling: skip tiles entirely outside the screen.
             // Checking all four edges avoids submitting invisible draw calls.
-            if (dst.x + dst.w < 0 || dst.x > static_cast<int>(screenSize.x))
+            if (dst.x + dst.w < 0 || dst.x > screenSize.x)
                 continue;
-            if (dst.y + dst.h < 0 || dst.y > static_cast<int>(screenSize.y))
+            if (dst.y + dst.h < 0 || dst.y > screenSize.y)
                 continue;
 
             batch.draw(m_tileset, src, dst, false);

@@ -1,4 +1,5 @@
 #include "engine/effects/ScreenTransition.h"
+#include "engine/renderer/Renderer.h"
 
 #include <algorithm>
 #include <utility>
@@ -55,7 +56,7 @@ void ScreenTransition::update(float dt)
 }
 
 void ScreenTransition::render(
-    SDL_Renderer *renderer,
+    Renderer *renderer,
     float viewW,
     float viewH) const
 {
@@ -64,22 +65,24 @@ void ScreenTransition::render(
         return;
     }
 
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    const Renderer::BlendMode previousBlendMode = renderer->getBlendMode();
+    renderer->setBlendMode(Renderer::BlendMode::Blend);
 
-    SDL_SetRenderDrawColorFloat(
-        renderer,
-        m_config.color.r,
-        m_config.color.g,
-        m_config.color.b,
-        m_config.color.a * m_state.alpha);
+    renderer->setDrawColor(Color(
+        static_cast<uint8_t>(m_config.color.r * 255),
+        static_cast<uint8_t>(m_config.color.g * 255),
+        static_cast<uint8_t>(m_config.color.b * 255),
+        static_cast<uint8_t>(m_config.color.a * m_state.alpha * 255)));
 
-    SDL_FRect rect{
+    Rectf rect{
         0.f,
         0.f,
         viewW,
         viewH};
 
-    SDL_RenderFillRect(renderer, &rect);
+    renderer->fillRect(rect);
+
+    renderer->setBlendMode(previousBlendMode);
 }
 
 void ScreenTransition::reset()

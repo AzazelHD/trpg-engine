@@ -1,0 +1,9 @@
+It's fine as-is for now — DebugRenderer doesn't touch game_1 at all, so it's not part of the SDL leak we're fixing. Migrating it to Renderer/Color (replace SDL_Color→Color, SDL_Renderer*→Renderer&, SDL_BlendMode→Renderer::BlendMode, SDL_SetRenderDrawColor/RenderLine/RenderFillRect/RenderRect → renderer.setDrawColor()/drawLine()/fillRect()/drawRect()) would be a nice consistency win, but it's optional and low-priority.
+
+
+
+why there is a TODO? void PauseState::render()
+
+Because MenuPanel/Button (in engine/ui/) are separate engine widgets that still take SDL_Renderer* in their own render() methods — they weren't part of the original game_1 SDL audit (that was about game_1/src/ui/DialogBox and UnitPanel, which are different, game-specific files).
+Since PauseState::m_renderer is now Renderer* instead of SDL_Renderer*, calling m_menu.render(m_renderer) directly won't compile — MenuPanel::render still expects the raw SDL pointer. The bridge (m_renderer->getNativeHandle()) keeps things compiling now without forcing a full MenuPanel/Button/Slider/TextLabel migration in this same step.
+The TODO just flags that those engine UI widgets are the last place still using SDL_Renderer* directly, and should eventually be migrated to Renderer& too — at which point getNativeHandle() can be removed entirely. Lower priority than game_1's own states/UI.

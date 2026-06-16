@@ -32,6 +32,7 @@ add_library(engine STATIC
     src/engine/renderer/SpriteBatch.cpp
     src/engine/renderer/Texture.cpp
     src/engine/renderer/TileLayer.cpp
+    src/engine/renderer/Renderer.cpp
     src/engine/effects/ScreenTransition.cpp
     src/engine/ui/Button.cpp
     src/engine/ui/MenuPanel.cpp
@@ -44,12 +45,15 @@ add_library(TRPG::engine ALIAS engine)
 # =========================
 # Include dirs
 # =========================
+
+set_target_properties(engine PROPERTIES
+    DEBUG_POSTFIX "d"
+)
+
 target_include_directories(engine
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/engine>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
-        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/engine>
 )
 
 # =========================

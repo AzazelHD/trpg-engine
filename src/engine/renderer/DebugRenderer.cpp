@@ -1,8 +1,9 @@
+#include "engine/renderer/Camera.h"
+#include "engine/renderer/Renderer.h"
+#include "engine/renderer/DebugRenderer.h"
+
 #include <cmath>
 #include <cstdlib>
-#include <algorithm>
-#include "engine/renderer/Camera.h"
-#include "engine/renderer/DebugRenderer.h"
 
 void DebugRenderer::setEnabled(bool enabled)
 {
@@ -39,7 +40,7 @@ void DebugRenderer::clear()
 #endif
 }
 
-void DebugRenderer::addScreenLine(Vec2f start, Vec2f end, const SDL_Color &color)
+void DebugRenderer::addScreenLine(Vec2f start, Vec2f end, const Color &color)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -49,7 +50,7 @@ void DebugRenderer::addScreenLine(Vec2f start, Vec2f end, const SDL_Color &color
 #endif
 }
 
-void DebugRenderer::addScreenRect(Rectf rect, const SDL_Color &color, bool filled)
+void DebugRenderer::addScreenRect(Rectf rect, const Color &color, bool filled)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -62,7 +63,7 @@ void DebugRenderer::addScreenRect(Rectf rect, const SDL_Color &color, bool fille
 #endif
 }
 
-void DebugRenderer::addScreenCircle(Vec2f center, float radius, const SDL_Color &color, bool filled)
+void DebugRenderer::addScreenCircle(Vec2f center, float radius, const Color &color, bool filled)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -102,7 +103,7 @@ void DebugRenderer::addScreenCircle(Vec2f center, float radius, const SDL_Color 
 #endif
 }
 
-void DebugRenderer::addIsoLine(Vec2f start, Vec2f end, const SDL_Color &color)
+void DebugRenderer::addIsoLine(Vec2f start, Vec2f end, const Color &color)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -112,7 +113,7 @@ void DebugRenderer::addIsoLine(Vec2f start, Vec2f end, const SDL_Color &color)
 #endif
 }
 
-void DebugRenderer::addIsoRect(Rectf rect, const SDL_Color &color, bool filled)
+void DebugRenderer::addIsoRect(Rectf rect, const Color &color, bool filled)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -125,15 +126,14 @@ void DebugRenderer::addIsoRect(Rectf rect, const SDL_Color &color, bool filled)
 #endif
 }
 
-void DebugRenderer::flush(SDL_Renderer *renderer, const Camera &camera)
+void DebugRenderer::flush(Renderer *renderer, const Camera &camera)
 {
 #ifndef NDEBUG
     if (!renderer || !m_enabled)
         return;
 
-    SDL_BlendMode previousBlendMode = SDL_BLENDMODE_NONE;
-    SDL_GetRenderDrawBlendMode(renderer, &previousBlendMode);
-    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    Renderer::BlendMode previousBlendMode = renderer->getBlendMode();
+    renderer->setBlendMode(Renderer::BlendMode::Blend);
 
     const Vec2f offset = camera.getOffset();
     const float zoom = camera.getZoom();
@@ -149,76 +149,49 @@ void DebugRenderer::flush(SDL_Renderer *renderer, const Camera &camera)
             (line.b.x - offset.x) * zoom,
             (line.b.y - offset.y) * zoom};
 
-        SDL_SetRenderDrawColor(renderer, line.color.r, line.color.g, line.color.b, line.color.a);
-
-        SDL_RenderLine(
-            renderer,
-            std::clamp(a.x, -32768.f, 32767.f),
-            std::clamp(a.y, -32768.f, 32767.f),
-            std::clamp(b.x, -32768.f, 32767.f),
-            std::clamp(b.y, -32768.f, 32767.f));
+        renderer->setDrawColor(line.color);
+        renderer->drawLine(a, b);
     }
 
     // ---------------- ISO RECTS ----------------
     for (const RectCommand &rectCmd : m_isoRects)
     {
         Recti screenRect = camera.isoSpaceRectToScreen(rectCmd.rect);
-
-        SDL_FRect r{
+        Rectf screenRectF{
             (float)screenRect.x,
             (float)screenRect.y,
             (float)screenRect.w,
             (float)screenRect.h};
 
-        SDL_SetRenderDrawColor(renderer,
-                               rectCmd.color.r,
-                               rectCmd.color.g,
-                               rectCmd.color.b,
-                               rectCmd.color.a);
+        renderer->setDrawColor(rectCmd.color);
 
         if (rectCmd.filled)
-            SDL_RenderFillRect(renderer, &r);
+            renderer->fillRect(screenRectF);
         else
-            SDL_RenderRect(renderer, &r);
+            renderer->drawRect(screenRectF);
     }
 
     // ---------------- SCREEN LINES ----------------
     for (const LineCommand &line : m_screenLines)
     {
-        SDL_SetRenderDrawColor(renderer, line.color.r, line.color.g, line.color.b, line.color.a);
-
-        SDL_RenderLine(
-            renderer,
-            std::clamp(line.a.x, -32768.f, 32767.f),
-            std::clamp(line.a.y, -32768.f, 32767.f),
-            std::clamp(line.b.x, -32768.f, 32767.f),
-            std::clamp(line.b.y, -32768.f, 32767.f));
+        renderer->setDrawColor(line.color);
+        renderer->drawLine(line.a, line.b);
     }
 
     // ---------------- SCREEN RECTS ----------------
     for (const RectCommand &rectCmd : m_screenRects)
     {
-        SDL_FRect r{
-            std::clamp(rectCmd.rect.x, -32768.f, 32767.f),
-            std::clamp(rectCmd.rect.y, -32768.f, 32767.f),
-            std::clamp(rectCmd.rect.w, -32768.f, 32767.f),
-            std::clamp(rectCmd.rect.h, -32768.f, 32767.f)};
-
-        SDL_SetRenderDrawColor(renderer,
-                               rectCmd.color.r,
-                               rectCmd.color.g,
-                               rectCmd.color.b,
-                               rectCmd.color.a);
+        renderer->setDrawColor(rectCmd.color);
 
         if (rectCmd.filled)
-            SDL_RenderFillRect(renderer, &r);
+            renderer->fillRect(rectCmd.rect);
         else
-            SDL_RenderRect(renderer, &r);
+            renderer->drawRect(rectCmd.rect);
     }
 
     // Clear after frame
     clear();
 
-    SDL_SetRenderDrawBlendMode(renderer, previousBlendMode);
+    renderer->setBlendMode(previousBlendMode);
 #endif
 }

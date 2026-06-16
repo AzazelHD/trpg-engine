@@ -1,17 +1,23 @@
 #pragma once
+#include "engine/renderer/Renderer.h"
 
-// Window wraps an SDL_Window + SDL_Renderer pair.
-// The rest of the engine never touches SDL directly — they go through Window and Renderer wrappers.
+// Window wraps an SDL_Window + SDL_Renderer pair and owns the engine Renderer
+// built on top of that SDL_Renderer. The rest of the engine/game never touches
+// SDL_Window/SDL_Renderer directly - only Window and Renderer wrap them.
 //
-// [x]: Declare the class with:
-//   - Constructor: Window(const char* title, int w, int h)
-//   - Destructor: must call SDL_DestroyRenderer and SDL_DestroyWindow
-//   - Getters: getSDLWindow(), getSDLRenderer(), getWidth(), getHeight()
-//   - Optional: setFullscreen(bool), setTitle(const char*)
+// [x] Constructor: SDL_CreateWindow + SDL_CreateRenderer + vsync, then wrap the
+//       SDL_Renderer* into m_renderer.
+// [x] Destructor: SDL_DestroyRenderer + SDL_DestroyWindow.
+// [x] getRenderer(): primary draw entry point for the rest of the engine.
+// [x] getWidth() / getHeight().
+// [x] setFullscreen(bool) - SDL_SetWindowFullscreen.
+// [x] setTitle(const char*) - SDL_SetWindowTitle.
+// [x] setResizable(bool) - SDL_SetWindowResizable (replaces game-side
+//       SDL_GetRenderWindow + SDL_SetWindowResizable).
+// [x] setAspectRatio(min, max) - SDL_SetWindowAspectRatio.
 //
-// Important: do NOT include SDL.h in this header. Forward-declare SDL_Window and SDL_Renderer
-// as struct pointers so callers don't pull in all of SDL just from this header.
-// (You'll need SDL.h only in Window.cpp)
+// Note: getSDLWindow()/getSDLRenderer() were removed - nothing outside
+// Window/Renderer should hold raw SDL handles anymore.
 
 struct SDL_Window;
 struct SDL_Renderer;
@@ -22,25 +28,24 @@ public:
     Window(const char *title, int w, int h);
     ~Window();
 
-    // Disable copy
     Window(const Window &) = delete;
     Window &operator=(const Window &) = delete;
-
-    // Disable move (simplest safe option)
     Window(Window &&) = delete;
     Window &operator=(Window &&) = delete;
 
-    [[nodiscard]] SDL_Window *getSDLWindow() const;
-    [[nodiscard]] SDL_Renderer *getSDLRenderer() const;
+    [[nodiscard]] Renderer &getRenderer() { return m_renderer; }
     [[nodiscard]] int getWidth() const;
     [[nodiscard]] int getHeight() const;
 
     void setFullscreen(bool enabled);
     void setTitle(const char *title);
+    void setResizable(bool enabled);
+    void setAspectRatio(float minAspect, float maxAspect);
 
 private:
     SDL_Window *m_window = nullptr;
-    SDL_Renderer *m_renderer = nullptr;
+    SDL_Renderer *m_sdlRenderer = nullptr;
+    Renderer m_renderer;
 
     const int m_width;
     const int m_height;

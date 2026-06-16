@@ -37,6 +37,16 @@
       "dependsOrder": "sequence",
       "dependsOn": ["Engine Configure", "Engine Build (Release)", "Engine Install (Release)"],
       "problemMatcher": []
+    },
+    {
+      "label": "Native Tools (x64)",
+      "type": "shell",
+      "command": "cmd.exe",
+      "args": [
+        "/k",
+        "\"C:\\Program Files (x86)\\Microsoft Visual Studio\\18\\BuildTools\\Common7\\Tools\\VsDevCmd.bat\" -arch=x64"
+      ],
+      "problemMatcher": []
     }
   ]
 }

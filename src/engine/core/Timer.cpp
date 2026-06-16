@@ -1,6 +1,7 @@
 
-#include "engine/core/Timer.h"
 #define NOMINMAX
+
+#include "engine/core/Timer.h"
 #include <Windows.h>
 #include <algorithm>
 
@@ -26,10 +27,13 @@ float Timer::tick()
 {
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
-    float delta = static_cast<float>(now.QuadPart - m_lastCounter) / static_cast<float>(m_frequency);
+
+    double delta =
+        double(now.QuadPart - m_lastCounter) / double(m_frequency);
+
     m_lastCounter = now.QuadPart;
-    // Cap delta to 0.05s (avoid spiral of death)
-    return std::min(delta, 0.05f);
+
+    return static_cast<float>(std::min(delta, 0.05));
 }
 
 // [x]: Implement getTotalTime().
@@ -38,5 +42,9 @@ float Timer::getTotalTime() const
 {
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
-    return static_cast<float>(now.QuadPart - m_startCounter) / static_cast<float>(m_frequency);
+
+    double total =
+        double(now.QuadPart - m_startCounter) / double(m_frequency);
+
+    return static_cast<float>(total);
 }

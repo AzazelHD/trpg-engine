@@ -1,7 +1,9 @@
 #pragma once
 
 #include "engine/math/MathUtils.h"
-#include <SDL3/SDL.h>
+#include "engine/renderer/Color.h"
+#include "engine/renderer/Renderer.h"
+
 #include <functional>
 
 class ScreenTransition
@@ -19,7 +21,7 @@ public:
     {
         TransitionFn transition;
         float duration = 0.5f;
-        SDL_FColor color = {0.f, 0.f, 0.f, 1.f};
+        FColor color = {0.f, 0.f, 0.f, 1.f};
         EasingFn easing = easeInOut;
         std::function<void()> onComplete = nullptr;
     };
@@ -28,7 +30,7 @@ public:
 
     void update(float dt);
 
-    void render(SDL_Renderer *renderer, float viewW, float viewH) const;
+    void render(Renderer *renderer, float viewW, float viewH) const;
 
     void reset();
 

@@ -1,39 +1,8 @@
 #include "engine/core/App.h"
-#include <SDL3/SDL.h>
-
-// [x]: Implement App::App(title, w, h)
-//   1. Call SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD).
-//   2. Construct m_window (title, w, h).
-//   3. Construct m_input.
-//   4. Construct your scene stack, push the initial scene (BootScene or whatever starts things).
-
-// [x]: Implement App::run()
-//   This is the heart of the engine. Use the accumulator / fixed-timestep pattern:
-//
-//   m_timer.start();
-//   while (!quit)
-//   {
-//       float dt = m_timer.tick();
-//       accumulator += dt;
-//
-//       quit = !m_input.pollEvents();   // false if window was closed
-//
-//       while (accumulator >= FIXED_STEP)   // FIXED_STEP = 1.0f / 60.0f
-//       {
-//           m_sceneStack.update(FIXED_STEP);
-//           accumulator -= FIXED_STEP;
-//       }
-//
-//       float alpha = accumulator / FIXED_STEP;  // interpolation factor for rendering
-//       SDL_RenderClear(renderer);
-//       m_sceneStack.render();   // scenes can use alpha for smooth motion
-//       SDL_RenderPresent(renderer);
-//   }
-//
-//   SDL_Quit() at the end.
-
 #include "engine/core/Window.h"
 #include "engine/core/Log.h"
+#include "engine/renderer/Renderer.h"
+#include "engine/renderer/Color.h"
 #include "engine/input/Input.h"
 #include "engine/input/KeyCode.h"
 #include "engine/scene/Scene.h"
@@ -44,10 +13,14 @@
 #include <stdexcept>
 #include <string>
 
+// SDL3/SDL.h is only needed here for SDL_Init/SDL_Quit/SDL_ShowSimpleMessageBox.
+// Frame rendering goes through Window's Renderer, not raw SDL calls.
+
 namespace
 {
     constexpr float FIXED_STEP = 1.0f / 60.0f;
-    SDL_Renderer *s_renderer = nullptr;
+    Renderer *s_renderer = nullptr;
+    Window *s_window = nullptr;
     StateMachine<Scene> *s_sceneStack = nullptr;
 
     struct LoggedKey
@@ -80,6 +53,8 @@ namespace
     };
 }
 
+// [x]: 1. SDL_Init(VIDEO | GAMEPAD). 2. Construct Window (which owns Renderer).
+//      3. Construct Input. 4. Construct SceneStack and push initial scene.
 App::App(const char *title, int width, int height, SceneFactory initialSceneFactory)
     : m_fixedStep(FIXED_STEP)
 {
@@ -90,7 +65,8 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
     }
 
     m_window = std::make_unique<Window>(title, width, height);
-    s_renderer = m_window->getSDLRenderer();
+    s_window = m_window.get();
+    s_renderer = &m_window->getRenderer();
     m_input = &Input::instance();
     m_sceneStack = std::make_unique<StateMachine<Scene>>();
     s_sceneStack = m_sceneStack.get();
@@ -111,12 +87,18 @@ App::~App()
 {
     s_sceneStack = nullptr;
     s_renderer = nullptr;
+    s_window = nullptr;
     SDL_Quit();
 }
 
-SDL_Renderer *App::getRenderer() noexcept
+Renderer *App::getRenderer() noexcept
 {
     return s_renderer;
+}
+
+Window *App::getWindow() noexcept
+{
+    return s_window;
 }
 
 StateMachine<Scene> *App::getSceneStack() noexcept
@@ -124,9 +106,17 @@ StateMachine<Scene> *App::getSceneStack() noexcept
     return s_sceneStack;
 }
 
+// [x]: Native error dialog, no App instance required.
+void App::showErrorDialog(const char *title, const char *message)
+{
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message, nullptr);
+}
+
+// [x]: Fixed-timestep accumulator loop. Frame clear/present go through
+//      Window's Renderer instead of raw SDL_Renderer calls.
 void App::run()
 {
-    SDL_Renderer *renderer = m_window->getSDLRenderer();
+    Renderer &renderer = m_window->getRenderer();
     unsigned long long frame = 0;
 
     LOG_INFO("App", "Entering main loop (fixed step = %.4f)", m_fixedStep);
@@ -139,33 +129,22 @@ void App::run()
         LOG_SET_FRAME(frame);
 
         float deltaTime = m_timer.tick();
-
         accumulator += deltaTime;
 
         processEvents();
-
-        bool didUpdate = false;
 
         while (accumulator >= m_fixedStep)
         {
             update(m_fixedStep);
             accumulator -= m_fixedStep;
-            didUpdate = true;
-        }
-
-        if (didUpdate)
-        {
-            m_input->clearPressedLatches();
         }
 
         float alpha = accumulator / m_fixedStep;
 
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
+        renderer.clear(Color::black());
         render(alpha);
+        renderer.present();
 
-        SDL_RenderPresent(renderer);
         ++frame;
     }
 }
@@ -179,9 +158,10 @@ void App::processEvents()
         return;
     }
 
-    static bool s_wasDown[sizeof(kLoggedKeys) / sizeof(kLoggedKeys[0])] = {};
+    constexpr std::size_t keyCount = std::size(kLoggedKeys);
+    static bool s_wasDown[keyCount] = {};
 
-    for (std::size_t i = 0; i < (sizeof(kLoggedKeys) / sizeof(kLoggedKeys[0])); ++i)
+    for (std::size_t i = 0; i < keyCount; ++i)
     {
         const LoggedKey &key = kLoggedKeys[i];
         const bool down = m_input->isKeyDown(key.code);
@@ -208,10 +188,12 @@ void App::processEvents()
 
 void App::update(float dt)
 {
-    m_sceneStack->update(dt);
+    if (m_sceneStack)
+        m_sceneStack->update(dt);
 }
 
 void App::render(float alpha)
 {
-    m_sceneStack->render(alpha);
+    if (m_sceneStack)
+        m_sceneStack->render(alpha);
 }

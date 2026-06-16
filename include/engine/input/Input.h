@@ -2,7 +2,6 @@
 
 #include "engine/input/KeyCode.h"
 #include "engine/math/Vec2.h"
-#include <SDL3/SDL.h>
 #include <cstdint>
 
 // Input polls SDL events and exposes a clean query API.
@@ -29,22 +28,11 @@
 class Input
 {
 public:
-    Input();
-
     // [x]: Singleton accessor.
-    // Returns the single Input instance used by the engine.
     static Input &instance();
 
     // [x]: Poll SDL events and update internal input state.
-    // Must be called once per frame before game update logic.
     bool pollEvents();
-
-    // [x]: Optional event hook.
-    // Currently unused; reserved for future extensions:
-    // - text input
-    // - mouse wheel
-    // - controller input
-    void handleEvent(const SDL_Event &event);
 
     // [x]: True while key is held down.
     bool isKeyDown(KeyCode key) const;
@@ -61,87 +49,25 @@ public:
     // [x]: True while mouse button is held.
     bool isMouseButtonDown(int button) const;
 
-    // Clears one-shot key press latches after at least one game update tick.
-    void clearPressedLatches();
-
 private:
-    // [x]: Current frame keyboard state (SDL scancode indexed).
-    bool m_currentKeys[SDL_SCANCODE_COUNT] = {};
+    // [x]: Private constructor for singleton pattern.
+    Input();
+
+    // [x]: Maximum number of keys to track (engine-defined, not SDL-dependent).
+    static constexpr int MAX_KEYS = 512;
+
+    // [x]: Current frame keyboard state (scancode indexed).
+    bool m_currentKeys[MAX_KEYS] = {};
 
     // [x]: Previous frame keyboard state (used for edge detection).
-    bool m_previousKeys[SDL_SCANCODE_COUNT] = {};
+    bool m_previousKeys[MAX_KEYS] = {};
 
-    // Key down events latched until consumed after an update tick.
-    bool m_pressedLatches[SDL_SCANCODE_COUNT] = {};
-
-    // [x]: Current mouse position in screen/window coordinates.
+    // [x]: Current mouse position in window coordinates.
     Vec2f m_mousePosition = {0.0f, 0.0f};
 
     // [x]: Bitmask of current mouse button states.
     uint32_t m_mouseButtons = 0;
 
     // [x]: Convert engine KeyCode → SDL scancode.
-    // Used internally by all key query functions.
-    static SDL_Scancode keyCodeToScancode(KeyCode key)
-    {
-        switch (key)
-        {
-        // Navigation
-        case KeyCode::Up:
-            return SDL_SCANCODE_UP;
-        case KeyCode::Down:
-            return SDL_SCANCODE_DOWN;
-        case KeyCode::Left:
-            return SDL_SCANCODE_LEFT;
-        case KeyCode::Right:
-            return SDL_SCANCODE_RIGHT;
-
-        // WASD
-        case KeyCode::W:
-            return SDL_SCANCODE_W;
-        case KeyCode::A:
-            return SDL_SCANCODE_A;
-        case KeyCode::S:
-            return SDL_SCANCODE_S;
-        case KeyCode::D:
-            return SDL_SCANCODE_D;
-
-        // Actions
-        case KeyCode::Accept:
-            return SDL_SCANCODE_RETURN;
-        case KeyCode::Back:
-            return SDL_SCANCODE_ESCAPE;
-        case KeyCode::Pause:
-            return SDL_SCANCODE_P;
-        case KeyCode::Advance:
-            return SDL_SCANCODE_SPACE;
-
-        // Camera pan
-        case KeyCode::CameraPanUp:
-            return SDL_SCANCODE_KP_8;
-        case KeyCode::CameraPanDown:
-            return SDL_SCANCODE_KP_2;
-        case KeyCode::CameraPanLeft:
-            return SDL_SCANCODE_KP_4;
-        case KeyCode::CameraPanRight:
-            return SDL_SCANCODE_KP_6;
-
-        // Camera zoom
-        case KeyCode::CameraZoomIn:
-            return SDL_SCANCODE_KP_PLUS;
-        case KeyCode::CameraZoomOut:
-            return SDL_SCANCODE_KP_MINUS;
-
-        // Camera reset
-        case KeyCode::CameraReset:
-            return SDL_SCANCODE_KP_5;
-
-        // Debug
-        case KeyCode::DebugToggle:
-            return SDL_SCANCODE_F1;
-
-        default:
-            return SDL_SCANCODE_UNKNOWN;
-        }
-    }
+    static int keyCodeToScancode(KeyCode key);
 };

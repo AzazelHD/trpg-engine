@@ -3,51 +3,37 @@
 #include <string>
 #include <stdexcept>
 
-// [x]: Implement Window constructor.
-//   Call SDL_CreateWindow() with the title, w, h, and 0 for flags (shown by default in SDL3).
-//   Then call SDL_CreateRenderer() with nullptr for default renderer name.
-//   Enable vsync via SDL_SetRenderVSync(renderer, 1).
-//   If either returns nullptr, throw a std::runtime_error with SDL_GetError().
-
+// [x] Constructor: SDL_CreateWindow + SDL_CreateRenderer (default backend) +
+//       vsync, then wrap m_sdlRenderer into m_renderer.
 Window::Window(const char *title, int w, int h)
     : m_width(w), m_height(h)
 {
-    m_window = SDL_CreateWindow(
-        title,
-        w,
-        h,
-        0);
-
+    m_window = SDL_CreateWindow(title, w, h, 0);
     if (!m_window)
     {
-        throw std::runtime_error(
-            std::string("SDL_CreateWindow failed: ") + SDL_GetError());
+        throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
     }
 
-    m_renderer = SDL_CreateRenderer(
-        m_window,
-        nullptr);
-
-    if (!m_renderer)
+    m_sdlRenderer = SDL_CreateRenderer(m_window, nullptr);
+    if (!m_sdlRenderer)
     {
         SDL_DestroyWindow(m_window);
         m_window = nullptr;
-
-        throw std::runtime_error(
-            std::string("SDL_CreateRenderer failed: ") + SDL_GetError());
+        throw std::runtime_error(std::string("SDL_CreateRenderer failed: ") + SDL_GetError());
     }
 
-    SDL_SetRenderVSync(m_renderer, 1);
+    SDL_SetRenderVSync(m_sdlRenderer, 1);
+    m_renderer = Renderer(m_sdlRenderer);
 }
 
+// [x] Destructor: SDL_DestroyRenderer + SDL_DestroyWindow.
 Window::~Window()
 {
-    if (m_renderer)
+    if (m_sdlRenderer)
     {
-        SDL_DestroyRenderer(m_renderer);
-        m_renderer = nullptr;
+        SDL_DestroyRenderer(m_sdlRenderer);
+        m_sdlRenderer = nullptr;
     }
-
     if (m_window)
     {
         SDL_DestroyWindow(m_window);
@@ -55,42 +41,44 @@ Window::~Window()
     }
 }
 
-SDL_Window *Window::getSDLWindow() const
-{
-    return m_window;
-}
+int Window::getWidth() const { return m_width; }
+int Window::getHeight() const { return m_height; }
 
-SDL_Renderer *Window::getSDLRenderer() const
-{
-    return m_renderer;
-}
-
-int Window::getWidth() const
-{
-    return m_width;
-}
-
-int Window::getHeight() const
-{
-    return m_height;
-}
-
+// [x] setFullscreen(): SDL_SetWindowFullscreen.
 void Window::setFullscreen(bool enabled)
 {
     if (m_window)
     {
         if (!SDL_SetWindowFullscreen(m_window, enabled))
         {
-            throw std::runtime_error(
-                std::string("SDL_SetWindowFullscreen failed: ") + SDL_GetError());
+            throw std::runtime_error(std::string("SDL_SetWindowFullscreen failed: ") + SDL_GetError());
         }
     }
 }
 
+// [x] setTitle(): SDL_SetWindowTitle.
 void Window::setTitle(const char *title)
 {
     if (m_window && title)
     {
         SDL_SetWindowTitle(m_window, title);
+    }
+}
+
+// [x] setResizable(): SDL_SetWindowResizable.
+void Window::setResizable(bool enabled)
+{
+    if (m_window)
+    {
+        SDL_SetWindowResizable(m_window, enabled);
+    }
+}
+
+// [x] setAspectRatio(): SDL_SetWindowAspectRatio.
+void Window::setAspectRatio(float minAspect, float maxAspect)
+{
+    if (m_window)
+    {
+        SDL_SetWindowAspectRatio(m_window, minAspect, maxAspect);
     }
 }

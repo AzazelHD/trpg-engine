@@ -1,28 +1,20 @@
 #pragma once
 
-// Texture wraps a GPU texture resource.
-// Loads from file via engine renderer backend.
-// Stores width/height for fast access.
+// Texture wraps a GPU texture resource (opaque handle) + cached width/height.
 //
 // Design rule:
-// - SDL is NOT exposed in this API
-// - Texture is backend-agnostic
-// - Only renderer implementation may access GPU handle
+// - SDL is NOT exposed in this API.
+// - Created exclusively via Renderer::loadTexture() (friend access to the
+//   private default constructor + members).
+// - Destructor frees the backend GPU resource automatically.
 //
-// Lifetime:
-// - created by engine resource system or renderer
-// - destroyed automatically
-//
-// [x] Define constructor (filePath-based loading via backend renderer)
-// [x] Implement destructor (free backend GPU resource)
-// [x] Store width/height after loading
-
-struct SDL_Renderer;
+// [x] Private default constructor - only Renderer (friend) can construct.
+// [x] Destructor: free backend GPU resource.
+// [x] getWidth()/getHeight().
 
 class Texture
 {
 public:
-    explicit Texture(SDL_Renderer *renderer, const char *filePath);
     ~Texture();
 
     Texture(const Texture &) = delete;
@@ -32,9 +24,9 @@ public:
     int getHeight() const;
 
 private:
-    friend class SpriteBatch;
+    friend class Renderer;
 
-    void *getNativeHandle() const { return m_texture; }
+    Texture() = default;
 
     void *m_texture = nullptr;
     int m_width = 0;
