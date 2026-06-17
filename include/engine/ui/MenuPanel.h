@@ -18,8 +18,8 @@
 // - [x] Selection visuals are synced through FocusGroup.
 //
 // --- INPUT FLOW ---
-// - [x] handleInput(moveUp, moveDown, confirm)
-//       routes input to navigateUp / navigateDown / activateSelected
+// - [x] handleInput() autonomously queries the global Input instance
+//       and routes valid presses to navigateUp / navigateDown.
 //
 // --- POSITION ---
 // - [x] m_position defines panel origin
@@ -29,15 +29,21 @@ class MenuPanel
 {
 public:
     MenuPanel() = default;
+
     void addButton(const Button &button);
     void addButton(Button &&button);
-    bool handleInput(bool moveUp, bool moveDown, bool confirm);
+
+    // Scans engine inputs and updates internal selection
+    void handleInput();
+
     void render(Renderer *renderer) const;
     void setPosition(Vec2f position);
     void setVerticalLayout(const VerticalLayoutConfig &layout);
     void clearLayout();
+
     void navigateUp();
     void navigateDown();
+
     [[nodiscard]] bool activateSelected();
     [[nodiscard]] int getSelectedIndex() const;
     [[nodiscard]] bool empty() const;

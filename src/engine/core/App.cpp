@@ -9,8 +9,8 @@
 #include "engine/statemachine/StateMachine.h"
 
 #include <SDL3/SDL.h>
-#include <memory>
 #include <stdexcept>
+#include <memory>
 #include <string>
 
 // SDL3/SDL.h is only needed here for SDL_Init/SDL_Quit/SDL_ShowSimpleMessageBox.
@@ -131,14 +131,17 @@ void App::run()
         float deltaTime = m_timer.tick();
         accumulator += deltaTime;
 
+        // 1. Collect OS inputs and write them into the snapshot arrays
         processEvents();
 
+        // 2. Fixed timestep loop: For simulation, physics, and gameplay updates only.
         while (accumulator >= m_fixedStep)
         {
             update(m_fixedStep);
             accumulator -= m_fixedStep;
         }
 
+        // 3. Render pass
         float alpha = accumulator / m_fixedStep;
 
         renderer.clear(Color::black());
@@ -151,38 +154,40 @@ void App::run()
 
 void App::processEvents()
 {
+    Input::instance().update();
+
+    // 1. Poll OS events first
     if (!m_input->pollEvents())
     {
-        LOG_INFO("Input", "Window close requested (SDL_QUIT)");
         m_running = false;
         return;
     }
 
-    constexpr std::size_t keyCount = std::size(kLoggedKeys);
-    static bool s_wasDown[keyCount] = {};
+    // 2. Logging and System checks:
+    // Perform these BEFORE we pass input to the SceneStack.
+    Input &input = Input::instance();
 
-    for (std::size_t i = 0; i < keyCount; ++i)
+    for (const auto &key : kLoggedKeys)
     {
-        const LoggedKey &key = kLoggedKeys[i];
-        const bool down = m_input->isKeyDown(key.code);
-
-        if (down && !s_wasDown[i])
+        if (input.isKeyPressed(key.code))
         {
-            LOG_INFO(
-                "Input",
-                "Key pressed: %s (state=%s)",
-                key.name,
-                m_sceneStack ? m_sceneStack->currentStateDebugName() : "<no-scene-stack>");
+            LOG_INFO("Input", "Key pressed: %s (state=%s)", key.name,
+                     m_sceneStack ? m_sceneStack->currentStateDebugName() : "<no-scene-stack>");
         }
-
-        s_wasDown[i] = down;
     }
 
-    if (m_input->isKeyPressed(KeyCode::Back))
+    if (input.isKeyPressed(KeyCode::Back))
     {
         LOG_INFO("Input", "Back pressed (Escape) -> exiting app");
         m_running = false;
-        return;
+    }
+
+    // 3. LAST: Route input to the active scene.
+    // By doing this last, we ensure the logs accurately reflect the input
+    // that the game states are about to process.
+    if (m_sceneStack)
+    {
+        m_sceneStack->handleInput();
     }
 }
 

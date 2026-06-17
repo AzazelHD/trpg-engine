@@ -1,7 +1,8 @@
 #pragma once
+#include "engine/core/Timer.h"
+
 #include <functional>
 #include <memory>
-#include "engine/core/Timer.h"
 
 // App is the top-level owner of the engine.
 // It initialises SDL, creates the Window (which owns the engine::Renderer),

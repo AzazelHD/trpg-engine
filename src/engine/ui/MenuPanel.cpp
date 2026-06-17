@@ -1,3 +1,4 @@
+#include "engine/input/Input.h"
 #include "engine/ui/MenuPanel.h"
 #include "engine/renderer/Renderer.h"
 
@@ -27,22 +28,22 @@ void MenuPanel::addButton(Button &&button)
     rebuildFocus();
 }
 
-// [x] Handles keyboard input for menu navigation + activation
-bool MenuPanel::handleInput(bool moveUp, bool moveDown, bool confirm)
+// [x] Handles keyboard input for menu navigation only
+void MenuPanel::handleInput()
 {
+    const Input &input = Input::instance();
+
+    // Use allowRepeat = true so users can hold arrows to scroll smoothly!
+    bool moveUp = input.isKeyPressed(KeyCode::Up, true) || input.isKeyPressed(KeyCode::W, true);
+    bool moveDown = input.isKeyPressed(KeyCode::Down, true) || input.isKeyPressed(KeyCode::S, true);
+
     if (moveUp != moveDown)
     {
         if (moveUp)
-        {
             navigateUp();
-        }
         else
-        {
             navigateDown();
-        }
     }
-
-    return confirm && activateSelected();
 }
 
 // [x] Renders all buttons in panel

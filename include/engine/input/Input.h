@@ -1,73 +1,89 @@
 #pragma once
 
-#include "engine/input/KeyCode.h"
 #include "engine/math/Vec2.h"
+#include "engine/input/KeyCode.h"
 #include <cstdint>
 
-// Input polls SDL events and exposes a clean query API.
-// The game never calls SDL_PollEvent — only Input does.
+// =============================================================================
+// Input — Singleton input manager using SDL events.
+// =============================================================================
 //
-// [x]: Declare the class with:
-//   - pollEvents(): call once per frame at the top of the loop. Reads all SDL events.
-//                  Returns false if the user closed the window (quit event).
-//   - isKeyDown(KeyCode key): true every frame the key is held.
-//   - isKeyPressed(KeyCode key): true only on the first frame the key goes down.
-//   - isKeyReleased(KeyCode key): true only on the frame the key goes up.
-//   - getMousePosition(): current mouse position in window/screen pixels.
-//   - isMouseButtonDown(button): true while the requested SDL mouse button is held.
+// Responsibilities:
+//   - Poll SDL events each frame.
+//   - Maintain current key state (held down).
+//   - Accumulate key press, release, and repeat events per frame.
+//   - Expose clean query API: isKeyDown, isKeyPressed, isKeyReleased.
 //
-// Implementation hint: SDL gives you a snapshot via SDL_GetKeyboardState().
-// To detect "pressed this frame", compare current state vs. previous frame state.
-// Store two bool arrays: currentKeys[] and previousKeys[], swap after each poll.
+// Design notes:
+//   - Events are accumulated during pollEvents() into dedicated arrays.
+//   - isKeyPressed(KeyCode, bool allowRepeat) reads from accumulation arrays.
+//   - allowRepeat = true enables OS-level key repeat (useful for menus).
+//   - No reliance on SDL_GetKeyboardState; event-driven for reliability.
 //
-// [x]: Singleton pattern added:
-//   - instance() provides global access to the single Input system.
-//   - Avoids passing Input reference through all game systems.
-//   - Created lazily on first use (static local instance).
+// Singleton access via Input::instance().
+// =============================================================================
 
 class Input
 {
 public:
-    // [x]: Singleton accessor.
+    // ── Singleton ──────────────────────────────────────────────────────────
     static Input &instance();
 
-    // [x]: Poll SDL events and update internal input state.
+    // Disallow copying and moving to strictly enforce the Singleton contract.
+    Input(const Input &) = delete;
+    Input &operator=(const Input &) = delete;
+    Input(Input &&) = delete;
+    Input &operator=(Input &&) = delete;
+
+    // ── Frame update ────────────────────────────────────────────────────────
+    // Poll all SDL events and update internal state.
+    // Returns false if the user closed the window (SDL_QUIT).
     bool pollEvents();
 
-    // [x]: True while key is held down.
+    // ── Key state queries ──────────────────────────────────────────────────
+
+    // True while the key is physically held down.
     bool isKeyDown(KeyCode key) const;
 
-    // [x]: True only on first frame key is pressed.
-    bool isKeyPressed(KeyCode key) const;
+    // True only on the first frame the key is pressed (or repeated if allowRepeat).
+    // - allowRepeat = false: only non-repeat presses (default, for actions).
+    // - allowRepeat = true:  includes OS key repeat events (for menu navigation).
+    bool isKeyPressed(KeyCode key, bool allowRepeat = false) const;
 
-    // [x]: True only on first frame key is released.
+    // True only on the frame the key is released.
     bool isKeyReleased(KeyCode key) const;
 
-    // [x]: Returns current mouse position in window space.
+    // ── Mouse queries ──────────────────────────────────────────────────────
+
+    // Current mouse position in window coordinates.
     Vec2f getMousePosition() const;
 
-    // [x]: True while mouse button is held.
+    // True while a mouse button is held (button: 1=left, 2=middle, 3=right).
     bool isMouseButtonDown(int button) const;
 
 private:
-    // [x]: Private constructor for singleton pattern.
+    // ── Constructor (private for singleton) ──────────────────────────────
+    // Note: Memory is zeroed out automatically via in-class initializers.
     Input();
 
-    // [x]: Maximum number of keys to track (engine-defined, not SDL-dependent).
-    static constexpr int MAX_KEYS = 512;
+    // ── Constants ──────────────────────────────────────────────────────────
+    static constexpr int MAX_KEYS = 512; // covers all SDL scancodes.
 
-    // [x]: Current frame keyboard state (scancode indexed).
+    // ── Key state arrays ──────────────────────────────────────────────────
+
+    // Current and previous frame key states (for hold/release detection).
     bool m_currentKeys[MAX_KEYS] = {};
-
-    // [x]: Previous frame keyboard state (used for edge detection).
     bool m_previousKeys[MAX_KEYS] = {};
 
-    // [x]: Current mouse position in window coordinates.
+    // Event accumulation arrays (reset each frame in pollEvents()).
+    bool m_pressedThisFrame[MAX_KEYS] = {};  // non-repeat presses
+    bool m_releasedThisFrame[MAX_KEYS] = {}; // releases
+    bool m_repeatedThisFrame[MAX_KEYS] = {}; // OS key repeats
+
+    // ── Mouse state ───────────────────────────────────────────────────────
     Vec2f m_mousePosition = {0.0f, 0.0f};
+    uint32_t m_mouseButtons = 0; // bitmask of currently held buttons
 
-    // [x]: Bitmask of current mouse button states.
-    uint32_t m_mouseButtons = 0;
-
-    // [x]: Convert engine KeyCode → SDL scancode.
+    // ── Internal helpers ──────────────────────────────────────────────────
     static int keyCodeToScancode(KeyCode key);
 };

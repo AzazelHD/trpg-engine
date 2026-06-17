@@ -4,69 +4,107 @@
 
 Input::Input()
 {
-    // Ensure key state arrays are zeroed
-    std::memset(m_currentKeys, 0, sizeof(m_currentKeys));
-    std::memset(m_previousKeys, 0, sizeof(m_previousKeys));
+    // With the m_currentKeys[MAX_KEYS] = {} initializers in the .h file,
+    // the constructor already zeroes out the memory automatically. We leave
+    // the constructor body open here in case you need to initialize anything else later.
 }
 
-// [x]: Singleton access point.
 Input &Input::instance()
 {
     static Input s_instance;
     return s_instance;
 }
 
-// [x]: Poll SDL events and update internal input state.
 bool Input::pollEvents()
 {
+    // 1. Snapshot previous frame state and clear frame accumulator arrays
     std::memcpy(m_previousKeys, m_currentKeys, sizeof(m_currentKeys));
+    std::memset(m_pressedThisFrame, 0, sizeof(m_pressedThisFrame));
+    std::memset(m_releasedThisFrame, 0, sizeof(m_releasedThisFrame));
+    std::memset(m_repeatedThisFrame, 0, sizeof(m_repeatedThisFrame));
 
     bool quitRequested = false;
-
     SDL_Event event;
+
+    // 2. Process the SDL event queue atomically
     while (SDL_PollEvent(&event))
     {
-        if (event.type == SDL_EVENT_QUIT)
+        switch (event.type)
+        {
+        case SDL_EVENT_QUIT:
             quitRequested = true;
+            break;
+
+        case SDL_EVENT_KEY_DOWN:
+        {
+            int sc = event.key.scancode;
+            if (sc >= 0 && sc < MAX_KEYS)
+            {
+                m_currentKeys[sc] = true;
+
+                if (event.key.repeat)
+                    m_repeatedThisFrame[sc] = true;
+                else
+                    m_pressedThisFrame[sc] = true;
+            }
+        }
+        break;
+
+        case SDL_EVENT_KEY_UP:
+        {
+            int sc = event.key.scancode;
+            if (sc >= 0 && sc < MAX_KEYS)
+            {
+                m_currentKeys[sc] = false;
+                m_releasedThisFrame[sc] = true;
+            }
+        }
+        break;
+
+        case SDL_EVENT_MOUSE_MOTION:
+            m_mousePosition = {event.motion.x, event.motion.y};
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            m_mouseButtons |= (1 << (event.button.button - 1));
+            break;
+
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+            m_mouseButtons &= ~(1 << (event.button.button - 1));
+            break;
+        }
     }
-
-    int len = 0;
-    const bool *state = SDL_GetKeyboardState(&len);
-
-    int count = (len < MAX_KEYS) ? len : MAX_KEYS;
-
-    for (int i = 0; i < count; i++)
-        m_currentKeys[i] = state[i];
-
-    float mouseX = 0.f, mouseY = 0.f;
-    m_mouseButtons = SDL_GetMouseState(&mouseX, &mouseY);
-    m_mousePosition = {mouseX, mouseY};
 
     return !quitRequested;
 }
 
-// [x]: True while key is held down.
+// ── Key Queries ──────────────────────────────────────────────────────────────
+
 bool Input::isKeyDown(KeyCode key) const
 {
     int sc = keyCodeToScancode(key);
     return sc >= 0 && sc < MAX_KEYS && m_currentKeys[sc];
 }
 
-// [x]: True only on first frame key is pressed.
-bool Input::isKeyPressed(KeyCode key) const
+bool Input::isKeyPressed(KeyCode key, bool allowRepeat) const
 {
     int sc = keyCodeToScancode(key);
-    return sc >= 0 && sc < MAX_KEYS &&
-           m_currentKeys[sc] && !m_previousKeys[sc];
+    if (sc < 0 || sc >= MAX_KEYS)
+        return false;
+
+    if (allowRepeat)
+        return m_pressedThisFrame[sc] || m_repeatedThisFrame[sc];
+
+    return m_pressedThisFrame[sc];
 }
 
-// [x]: True only on first frame key is released.
 bool Input::isKeyReleased(KeyCode key) const
 {
     int sc = keyCodeToScancode(key);
-    return sc >= 0 && sc < MAX_KEYS &&
-           !m_currentKeys[sc] && m_previousKeys[sc];
+    return sc >= 0 && sc < MAX_KEYS && m_releasedThisFrame[sc];
 }
+
+// ── Mouse Queries ────────────────────────────────────────────────────────────
 
 Vec2f Input::getMousePosition() const
 {
@@ -98,7 +136,8 @@ bool Input::isMouseButtonDown(int button) const
     return (m_mouseButtons & mask) != 0;
 }
 
-// [x]: Convert engine KeyCode → SDL scancode.
+// ── Internal Helpers ─────────────────────────────────────────────────────────
+
 int Input::keyCodeToScancode(KeyCode key)
 {
     switch (key)

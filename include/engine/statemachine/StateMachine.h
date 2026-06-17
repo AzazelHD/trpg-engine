@@ -23,81 +23,74 @@
 // in this header file (or in a .inl file #included at the bottom of this header).
 // You cannot put template method bodies in a .cpp file — the compiler needs to see
 // them when it instantiates the template.
-
 template <typename T>
 class StateMachine
 {
 public:
     void push(std::unique_ptr<T> state)
     {
-        if (m_inDispatch)
+        if (m_updating)
         {
-            m_pendingOps.push_back(PendingOp{OpType::Push, std::move(state)});
+            m_pendingOps.emplace_back(OpType::Push, std::move(state));
             return;
         }
-
         applyPush(std::move(state));
     }
 
     void pop()
     {
-        if (m_inDispatch)
+        if (m_updating)
         {
-            m_pendingOps.push_back(PendingOp{OpType::Pop, nullptr});
+            m_pendingOps.emplace_back(OpType::Pop);
             return;
         }
-
         applyPop();
     }
 
     void replace(std::unique_ptr<T> state)
     {
-        if (m_inDispatch)
+        if (m_updating)
         {
-            m_pendingOps.push_back(PendingOp{OpType::Replace, std::move(state)});
+            m_pendingOps.emplace_back(OpType::Replace, std::move(state));
             return;
         }
-
         applyReplace(std::move(state));
     }
 
     void update(float dt)
     {
-        if (!m_states.empty())
-        {
-            m_inDispatch = true;
-            m_states.top()->update(dt);
-            m_inDispatch = false;
-            applyPending();
-        }
+        if (m_states.empty())
+            return;
+
+        m_updating = true;
+        m_states.top()->update(dt);
+        m_updating = false;
+
+        applyPending();
     }
 
-    void render() const
+    void handleInput()
     {
-        if (!m_states.empty())
-        {
-            m_states.top()->render();
-        }
+        // If we are currently processing a deferred state transition or if
+        // the stack is empty, do not forward inputs to a dying/non-existent state.
+        if (m_states.empty() || m_updating)
+            return;
+
+        m_states.top()->handleInput();
     }
 
     void render(float alpha) const
     {
-        (void)alpha;
-        render();
+        if (!m_states.empty())
+            m_states.top()->render(alpha);
     }
 
-    bool isEmpty() const
-    {
-        return m_states.empty();
-    }
+    bool isEmpty() const { return m_states.empty(); }
 
     const char *currentStateDebugName() const
     {
         if (m_states.empty() || !m_states.top())
-        {
             return "<none>";
-        }
-
         return typeid(*m_states.top()).name();
     }
 
@@ -106,45 +99,59 @@ private:
     {
         Push,
         Pop,
-        Replace,
+        Replace
     };
 
     struct PendingOp
     {
         OpType type;
         std::unique_ptr<T> state;
+
+        explicit PendingOp(OpType t, std::unique_ptr<T> s = nullptr)
+            : type(t), state(std::move(s)) {}
     };
+
+    void logTransition(const char *op, const T *state, bool isReplace = false)
+    {
+        const char *suffix = isReplace ? " (replace)" : "";
+        LOG_INFO("StateMachine", "%s -> %s%s", op, state ? typeid(*state).name() : "<null>", suffix);
+        LOG_INFO("StateMachine", "TOP  -> %s", currentStateDebugName());
+    }
 
     void applyPush(std::unique_ptr<T> state)
     {
-        if (state)
-        {
-            LOG_INFO("StateMachine", "PUSH -> %s", typeid(*state).name());
-            state->onEnter();
-            m_states.push(std::move(state));
-            LOG_INFO("StateMachine", "TOP  -> %s", currentStateDebugName());
-        }
+        if (!state)
+            return;
+        state->onEnter();
+        m_states.push(std::move(state));
+        logTransition("PUSH", m_states.top().get());
     }
 
     void applyPop()
     {
-        if (!m_states.empty())
-        {
-            LOG_INFO("StateMachine", "POP  <- %s", typeid(*m_states.top()).name());
-            m_states.top()->onExit();
-            m_states.pop();
-            LOG_INFO("StateMachine", "TOP  -> %s", currentStateDebugName());
-        }
+        if (m_states.empty())
+            return;
+        logTransition("POP ", m_states.top().get());
+        m_states.top()->onExit();
+        m_states.pop();
     }
 
+    // Does NOT touch m_pendingOps — performs the pop+push directly.
     void applyReplace(std::unique_ptr<T> state)
     {
-        if (state)
+        if (!state)
+            return;
+
+        if (!m_states.empty())
         {
-            LOG_INFO("StateMachine", "REPLACE requested -> %s", typeid(*state).name());
+            logTransition("POP ", m_states.top().get(), true);
+            m_states.top()->onExit();
+            m_states.pop();
         }
-        applyPop();
-        applyPush(std::move(state));
+
+        state->onEnter();
+        m_states.push(std::move(state));
+        logTransition("PUSH", m_states.top().get(), true);
     }
 
     void applyPending()
@@ -169,5 +176,5 @@ private:
 
     std::stack<std::unique_ptr<T>> m_states;
     std::vector<PendingOp> m_pendingOps;
-    bool m_inDispatch = false;
+    bool m_updating = false;
 };

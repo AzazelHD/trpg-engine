@@ -68,6 +68,7 @@ public:
 
     // Control
     void pan(Vec2f delta);
+    void setOffset(Vec2f offset) { m_offset = offset; }
     void follow(Vec2f cursorScreenPos, float edgeThreshold, Vec2f screenSize, float dt);
     void trackTarget(Vec2f targetIsoPos, Vec2f screenSize, float dt);
 
@@ -77,6 +78,7 @@ public:
     void clampToBounds();
 
     // Zoom
+    void setZoom(float zoom) { m_zoom = zoom; }
     void setZoom(float zoom, Vec2f focalScreenPos);
     void zoomIn(float amount, Vec2f focalScreenPos);
     void zoomOut(float amount, Vec2f focalScreenPos);
