@@ -21,6 +21,11 @@
 namespace
 {
     constexpr float FIXED_STEP = 1.0f / 60.0f;
+
+    // Locked render-rate cap. Bounds presented frames to 60 FPS on any display
+    // (vsync alone would follow the monitor refresh, e.g. 144 Hz). Sleeping off
+    // the leftover budget keeps GPU/CPU usage low for this lightweight game.
+    constexpr double TARGET_FPS = 60.0;
     Renderer *s_renderer = nullptr;
     Window *s_window = nullptr;
     StateMachine<Scene> *s_sceneStack = nullptr;
@@ -154,28 +159,17 @@ void App::run()
         render(alpha);
         renderer.present();
 
-        // 4. Frame limiter: bound render rate to m_targetFps (0 = uncapped).
-        //    Acts as an upper bound; with vsync enabled the lower of the two wins.
-        if (m_targetFps > 0.0f)
+        // 4. Frame limiter: cap presented frames to TARGET_FPS. Acts as an upper
+        //    bound on top of vsync (the lower of the two wins), so on high-refresh
+        //    displays we still hold 60 instead of running the GPU at full tilt.
+        const std::chrono::duration<double> targetFrame(1.0 / TARGET_FPS);
+        const auto remaining = targetFrame - (std::chrono::steady_clock::now() - frameStart);
+        if (remaining > std::chrono::duration<double>::zero())
         {
-            const std::chrono::duration<double> targetFrame(1.0 / m_targetFps);
-            const auto elapsed = std::chrono::steady_clock::now() - frameStart;
-            const auto remaining = targetFrame - elapsed;
-            if (remaining > std::chrono::duration<double>::zero())
-            {
-                std::this_thread::sleep_for(remaining);
-            }
+            std::this_thread::sleep_for(remaining);
         }
 
         ++frame;
-    }
-}
-
-void App::setVSync(bool enabled)
-{
-    if (m_window)
-    {
-        m_window->setVSync(enabled);
     }
 }
 

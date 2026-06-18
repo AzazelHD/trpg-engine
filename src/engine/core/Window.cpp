@@ -56,16 +56,6 @@ void Window::setFullscreen(bool enabled)
     }
 }
 
-// setVSync(): toggle SDL render vsync. Disable to let App's frame limiter
-// drive the framerate above the display refresh rate.
-void Window::setVSync(bool enabled)
-{
-    if (m_sdlRenderer)
-    {
-        SDL_SetRenderVSync(m_sdlRenderer, enabled ? 1 : 0);
-    }
-}
-
 // [x] setTitle(): SDL_SetWindowTitle.
 void Window::setTitle(const char *title)
 {

@@ -36,16 +36,6 @@ public:
 
     void run();
 
-    // Render-rate cap (frames per second). The fixed-timestep simulation always
-    // runs at a constant rate (see m_fixedStep) regardless of this value; this
-    // only bounds how often frames are presented. Set to 0 for uncapped.
-    void setTargetFps(float fps) noexcept { m_targetFps = fps; }
-    [[nodiscard]] float getTargetFps() const noexcept { return m_targetFps; }
-
-    // Toggle vsync on the window's renderer. Disable to let the frame limiter
-    // push the framerate above the display refresh rate.
-    void setVSync(bool enabled);
-
     // Returns the engine Renderer owned by the window.
     // Valid after construction; null before construction completes.
     [[nodiscard]] static Renderer *getRenderer() noexcept;
@@ -74,7 +64,6 @@ private:
 private:
     bool m_running = true;
 
-    float m_targetFps = 60.0f;
     float m_fixedStep = 1.0f / 60.0f;
     Timer m_timer;
 

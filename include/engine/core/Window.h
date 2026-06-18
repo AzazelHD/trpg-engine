@@ -38,7 +38,6 @@ public:
     [[nodiscard]] int getHeight() const;
 
     void setFullscreen(bool enabled);
-    void setVSync(bool enabled);
     void setTitle(const char *title);
     void setResizable(bool enabled);
     void setAspectRatio(float minAspect, float maxAspect);
