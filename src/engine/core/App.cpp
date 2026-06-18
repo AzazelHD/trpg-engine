@@ -154,8 +154,6 @@ void App::run()
 
 void App::processEvents()
 {
-    Input::instance().update();
-
     // 1. Poll OS events first
     if (!m_input->pollEvents())
     {
