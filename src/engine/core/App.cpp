@@ -23,6 +23,7 @@ namespace
     Window *s_window = nullptr;
     StateMachine<Scene> *s_sceneStack = nullptr;
 
+#ifdef _DEBUG
     struct LoggedKey
     {
         KeyCode code;
@@ -51,6 +52,7 @@ namespace
         {KeyCode::CameraReset, "CameraReset"},
         {KeyCode::DebugToggle, "DebugToggle"},
     };
+#endif
 }
 
 // [x]: 1. SDL_Init(VIDEO | GAMEPAD). 2. Construct Window (which owns Renderer).
@@ -163,8 +165,9 @@ void App::processEvents()
 
     // 2. Logging and System checks:
     // Perform these BEFORE we pass input to the SceneStack.
-    Input &input = Input::instance();
+    Input &input = *m_input;
 
+#ifdef _DEBUG
     for (const auto &key : kLoggedKeys)
     {
         if (input.isKeyPressed(key.code))
@@ -173,6 +176,7 @@ void App::processEvents()
                      m_sceneStack ? m_sceneStack->currentStateDebugName() : "<no-scene-stack>");
         }
     }
+#endif
 
     if (input.isKeyPressed(KeyCode::Back))
     {

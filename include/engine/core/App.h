@@ -64,7 +64,6 @@ private:
 private:
     bool m_running = true;
 
-    float m_targetFps = 60.0f;
     float m_fixedStep = 1.0f / 60.0f;
     Timer m_timer;
 
