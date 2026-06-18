@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <memory>
 #include <string>
+#include <thread>
+#include <chrono>
 
 // SDL3/SDL.h is only needed here for SDL_Init/SDL_Quit/SDL_ShowSimpleMessageBox.
 // Frame rendering goes through Window's Renderer, not raw SDL calls.
@@ -128,6 +130,8 @@ void App::run()
 
     while (m_running)
     {
+        const auto frameStart = std::chrono::steady_clock::now();
+
         LOG_SET_FRAME(frame);
 
         float deltaTime = m_timer.tick();
@@ -150,7 +154,28 @@ void App::run()
         render(alpha);
         renderer.present();
 
+        // 4. Frame limiter: bound render rate to m_targetFps (0 = uncapped).
+        //    Acts as an upper bound; with vsync enabled the lower of the two wins.
+        if (m_targetFps > 0.0f)
+        {
+            const std::chrono::duration<double> targetFrame(1.0 / m_targetFps);
+            const auto elapsed = std::chrono::steady_clock::now() - frameStart;
+            const auto remaining = targetFrame - elapsed;
+            if (remaining > std::chrono::duration<double>::zero())
+            {
+                std::this_thread::sleep_for(remaining);
+            }
+        }
+
         ++frame;
+    }
+}
+
+void App::setVSync(bool enabled)
+{
+    if (m_window)
+    {
+        m_window->setVSync(enabled);
     }
 }
 
