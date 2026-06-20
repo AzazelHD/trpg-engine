@@ -1,0 +1,30 @@
+[1mdiff --git a/src/engine/core/App.cpp b/src/engine/core/App.cpp[m
+[1mindex 4d15a16..ffc6489 100644[m
+[1m--- a/src/engine/core/App.cpp[m
+[1m+++ b/src/engine/core/App.cpp[m
+[36m@@ -154,8 +154,6 @@[m [mvoid App::run()[m
+ [m
+ void App::processEvents()[m
+ {[m
+[31m-    Input::instance().update();[m
+[31m-[m
+     // 1. Poll OS events first[m
+     if (!m_input->pollEvents())[m
+     {[m
+[1mdiff --git a/todo.txt b/todo.txt[m
+[1mindex c9a9e8e..29f8841 100644[m
+[1m--- a/todo.txt[m
+[1m+++ b/todo.txt[m
+[36m@@ -1,9 +1 @@[m
+[31m-It's fine as-is for now — DebugRenderer doesn't touch game_1 at all, so it's not part of the SDL leak we're fixing. Migrating it to Renderer/Color (replace SDL_Color→Color, SDL_Renderer*→Renderer&, SDL_BlendMode→Renderer::BlendMode, SDL_SetRenderDrawColor/RenderLine/RenderFillRect/RenderRect → renderer.setDrawColor()/drawLine()/fillRect()/drawRect()) would be a nice consistency win, but it's optional and low-priority.[m
+[31m-[m
+[31m-[m
+[31m-[m
+[31m-why there is a TODO? void PauseState::render()[m
+[31m-[m
+[31m-Because MenuPanel/Button (in engine/ui/) are separate engine widgets that still take SDL_Renderer* in their own render() methods — they weren't part of the original game_1 SDL audit (that was about game_1/src/ui/DialogBox and UnitPanel, which are different, game-specific files).[m
+[31m-Since PauseState::m_renderer is now Renderer* instead of SDL_Renderer*, calling m_menu.render(m_renderer) directly won't compile — MenuPanel::render still expects the raw SDL pointer. The bridge (m_renderer->getNativeHandle()) keeps things compiling now without forcing a full MenuPanel/Button/Slider/TextLabel migration in this same step.[m
+[31m-The TODO just flags that those engine UI widgets are the last place still using SDL_Renderer* directly, and should eventually be migrated to Renderer& too — at which point getNativeHandle() can be removed entirely. Lower priority than game_1's own states/UI.[m
+\ No newline at end of file[m
+[32m+[m[32mcan you please analyze @/src/engine/input/Input.cpp @/src/engine/ui/MenuPanel.cpp and files under @/game\src\states ? when i launch the game, on the main menu, where i have 2 buttons, start battle and settings, and i press WASD or arrow keys, the button hover doesnt change. Tho if i press Enter i enter the battle state and AI starts fighting[m
+\ No newline at end of file[m

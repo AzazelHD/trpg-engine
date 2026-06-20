@@ -4,16 +4,16 @@
 #include <stdexcept>
 
 // [x] Constructor: SDL_CreateWindow + SDL_CreateRenderer (default backend) +
-//       vsync, then wrap m_sdlRenderer into m_renderer.
-Window::Window(const char *title, int w, int h)
-    : m_width(w), m_height(h)
+//     vsync (caller-supplied, default Enabled), then wrap m_sdlRenderer
+//     into m_renderer.
+Window::Window(const char *title, int w, int h, VSyncMode vsync)
+    : m_width(w), m_height(h), m_vsync(vsync)
 {
     m_window = SDL_CreateWindow(title, w, h, 0);
     if (!m_window)
     {
         throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
     }
-
     m_sdlRenderer = SDL_CreateRenderer(m_window, nullptr);
     if (!m_sdlRenderer)
     {
@@ -21,8 +21,15 @@ Window::Window(const char *title, int w, int h)
         m_window = nullptr;
         throw std::runtime_error(std::string("SDL_CreateRenderer failed: ") + SDL_GetError());
     }
-
-    SDL_SetRenderVSync(m_sdlRenderer, 1);
+    if (!SDL_SetRenderVSync(m_sdlRenderer, static_cast<int>(m_vsync)))
+    {
+        std::string err = std::string("SDL_SetRenderVSync failed: ") + SDL_GetError();
+        SDL_DestroyRenderer(m_sdlRenderer);
+        m_sdlRenderer = nullptr;
+        SDL_DestroyWindow(m_window);
+        m_window = nullptr;
+        throw std::runtime_error(err);
+    }
     m_renderer = Renderer(m_sdlRenderer);
 }
 
@@ -81,4 +88,18 @@ void Window::setAspectRatio(float minAspect, float maxAspect)
     {
         SDL_SetWindowAspectRatio(m_window, minAspect, maxAspect);
     }
+}
+
+// [x] setVSync(): runtime toggle, kept in sync with m_vsync so getVSync()
+//     reflects the renderer's actual state.
+void Window::setVSync(VSyncMode mode)
+{
+    if (m_sdlRenderer)
+    {
+        if (!SDL_SetRenderVSync(m_sdlRenderer, static_cast<int>(mode)))
+        {
+            throw std::runtime_error(std::string("SDL_SetRenderVSync failed: ") + SDL_GetError());
+        }
+    }
+    m_vsync = mode;
 }

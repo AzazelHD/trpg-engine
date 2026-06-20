@@ -13,15 +13,59 @@
 #include <memory>
 #include <string>
 
-// SDL3/SDL.h is only needed here for SDL_Init/SDL_Quit/SDL_ShowSimpleMessageBox.
-// Frame rendering goes through Window's Renderer, not raw SDL calls.
+// SDL3/SDL.h is needed here for SDL_Init/SDL_Quit/SDL_ShowSimpleMessageBox
+// and the frame-timing calls (SDL_GetTicksNS/SDL_DelayNS) used by the manual
+// frame limiter. Frame clear/present go through Window's Renderer, not raw
+// SDL_Renderer calls.
 
 namespace
 {
-    constexpr float FIXED_STEP = 1.0f / 60.0f;
     Renderer *s_renderer = nullptr;
     Window *s_window = nullptr;
     StateMachine<Scene> *s_sceneStack = nullptr;
+    App *s_app = nullptr;
+
+    // Manual cap target for each preset, in seconds-per-frame. 0 means
+    // "no manual cap" (VSync preset — Window's vsync paces it instead).
+    float targetFrameSecondsForPreset(FrameRatePreset preset)
+    {
+        switch (preset)
+        {
+        case FrameRatePreset::Fps30:
+            return 1.0f / 30.0f;
+        case FrameRatePreset::Fps60:
+            return 1.0f / 60.0f;
+        case FrameRatePreset::Fps120:
+            return 1.0f / 120.0f;
+        case FrameRatePreset::VSync:
+            return 0.0f;
+        }
+        return 1.0f / 60.0f;
+    }
+
+    // Manual FPS presets disable vsync (a software limiter + hardware vsync
+    // fighting each other causes stutter); the VSync preset enables it and
+    // leaves presentation pacing entirely to the display.
+    VSyncMode vsyncModeForPreset(FrameRatePreset preset)
+    {
+        return preset == FrameRatePreset::VSync ? VSyncMode::Enabled : VSyncMode::Disabled;
+    }
+
+    const char *frameRatePresetName(FrameRatePreset preset)
+    {
+        switch (preset)
+        {
+        case FrameRatePreset::Fps30:
+            return "30 FPS";
+        case FrameRatePreset::Fps60:
+            return "60 FPS";
+        case FrameRatePreset::Fps120:
+            return "120 FPS";
+        case FrameRatePreset::VSync:
+            return "VSync";
+        }
+        return "unknown";
+    }
 
 #ifdef _DEBUG
     struct LoggedKey
@@ -55,10 +99,14 @@ namespace
 #endif
 }
 
-// [x]: 1. SDL_Init(VIDEO | GAMEPAD). 2. Construct Window (which owns Renderer).
-//      3. Construct Input. 4. Construct SceneStack and push initial scene.
-App::App(const char *title, int width, int height, SceneFactory initialSceneFactory)
-    : m_fixedStep(FIXED_STEP)
+// [x]: 1. SDL_Init(VIDEO | GAMEPAD). 2. Construct Window (which owns Renderer),
+//      with vsync derived from the requested frame-rate preset.
+//      3. Construct SceneStack and push initial scene. Input is a singleton
+//         accessed via Input::instance() in processEvents() — App owns no
+//         Input pointer.
+App::App(const char *title, int width, int height, SceneFactory initialSceneFactory,
+         float fixedStepSeconds, FrameRatePreset frameRatePreset)
+    : m_fixedStep(fixedStepSeconds), m_frameRatePreset(frameRatePreset), m_targetFrameSeconds(targetFrameSecondsForPreset(frameRatePreset))
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
     {
@@ -66,12 +114,12 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
             std::string("SDL_Init failed: ") + SDL_GetError());
     }
 
-    m_window = std::make_unique<Window>(title, width, height);
+    m_window = std::make_unique<Window>(title, width, height, vsyncModeForPreset(frameRatePreset));
     s_window = m_window.get();
     s_renderer = &m_window->getRenderer();
-    m_input = &Input::instance();
     m_sceneStack = std::make_unique<StateMachine<Scene>>();
     s_sceneStack = m_sceneStack.get();
+    s_app = this;
 
     if (initialSceneFactory)
     {
@@ -80,13 +128,13 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
         {
             throw std::runtime_error("Initial scene factory returned a null scene");
         }
-
         m_sceneStack->push(std::move(initialScene));
     }
 }
 
 App::~App()
 {
+    s_app = nullptr;
     s_sceneStack = nullptr;
     s_renderer = nullptr;
     s_window = nullptr;
@@ -108,20 +156,41 @@ StateMachine<Scene> *App::getSceneStack() noexcept
     return s_sceneStack;
 }
 
+App *App::getInstance() noexcept
+{
+    return s_app;
+}
+
 // [x]: Native error dialog, no App instance required.
 void App::showErrorDialog(const char *title, const char *message)
 {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message, nullptr);
 }
 
+void App::setFrameRatePreset(FrameRatePreset preset)
+{
+    m_frameRatePreset = preset;
+    m_targetFrameSeconds = targetFrameSecondsForPreset(preset);
+    if (m_window)
+    {
+        m_window->setVSync(vsyncModeForPreset(preset));
+    }
+    LOG_INFO("App", "Frame rate preset changed to %s", frameRatePresetName(preset));
+}
+
 // [x]: Fixed-timestep accumulator loop. Frame clear/present go through
-//      Window's Renderer instead of raw SDL_Renderer calls.
+//      Window's Renderer instead of raw SDL_Renderer calls. After present(),
+//      a manual frame limiter (SDL_GetTicksNS/SDL_DelayNS) caps the loop to
+//      m_targetFrameSeconds when set; for the VSync preset
+//      (m_targetFrameSeconds == 0) this is skipped and Window's vsync paces
+//      presentation instead.
 void App::run()
 {
     Renderer &renderer = m_window->getRenderer();
     unsigned long long frame = 0;
 
-    LOG_INFO("App", "Entering main loop (fixed step = %.4f)", m_fixedStep);
+    LOG_INFO("App", "Entering main loop (fixed step = %.4f, render preset = %s)",
+             m_fixedStep, frameRatePresetName(m_frameRatePreset));
 
     float accumulator = 0.0f;
     m_timer.start();
@@ -129,6 +198,8 @@ void App::run()
     while (m_running)
     {
         LOG_SET_FRAME(frame);
+
+        const Uint64 frameStartNs = SDL_GetTicksNS();
 
         float deltaTime = m_timer.tick();
         accumulator += deltaTime;
@@ -150,14 +221,30 @@ void App::run()
         render(alpha);
         renderer.present();
 
+        // 4. Manual frame cap. Skipped for the VSync preset, where Window's
+        //    vsync (set in the constructor / setFrameRatePreset) already
+        //    paces the present() call above.
+        if (m_targetFrameSeconds > 0.0f)
+        {
+            const Uint64 elapsedNs = SDL_GetTicksNS() - frameStartNs;
+            const Uint64 targetNs = static_cast<Uint64>(m_targetFrameSeconds * 1'000'000'000.0f);
+            if (elapsedNs < targetNs)
+            {
+                SDL_DelayNS(targetNs - elapsedNs);
+            }
+        }
+
         ++frame;
     }
 }
 
 void App::processEvents()
 {
-    // 1. Poll OS events first
-    if (!m_input->pollEvents())
+    Input &input = Input::instance();
+
+    // 1. Poll OS events first. This is the single frame-input entry point —
+    //    pollEvents() refreshes the current/previous key-state snapshots.
+    if (!input.pollEvents())
     {
         m_running = false;
         return;
@@ -165,7 +252,6 @@ void App::processEvents()
 
     // 2. Logging and System checks:
     // Perform these BEFORE we pass input to the SceneStack.
-    Input &input = *m_input;
 
 #ifdef _DEBUG
     for (const auto &key : kLoggedKeys)
