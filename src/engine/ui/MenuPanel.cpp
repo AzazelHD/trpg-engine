@@ -31,6 +31,10 @@ void MenuPanel::addButton(Button &&button)
 // [x] Handles keyboard input for menu navigation only
 void MenuPanel::handleInput()
 {
+    // Single point of keyboard navigation – no other scene should read
+    // Up/Down/WASD directly.  If you need to add game-specific input, do it
+    // in the scene's handleInput() but only for actions *other than* menu
+    // movement.
     const Input &input = Input::instance();
 
     // Use allowRepeat = true so users can hold arrows to scroll smoothly!

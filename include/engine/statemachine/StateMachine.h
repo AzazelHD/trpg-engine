@@ -71,12 +71,21 @@ public:
 
     void handleInput()
     {
-        // If we are currently processing a deferred state transition or if
-        // the stack is empty, do not forward inputs to a dying/non-existent state.
-        if (m_states.empty() || m_updating)
+        if (m_states.empty())
             return;
 
+        // Prevent re-entrant calls (safety).
+        if (m_updating)
+            return;
+
+        // Guard against self-destruction: just like update(), we set
+        // m_updating so that any push/pop/replace requested by the scene
+        // is deferred until after handleInput() returns.
+        m_updating = true;
         m_states.top()->handleInput();
+        m_updating = false;
+
+        applyPending();
     }
 
     void render(float alpha) const

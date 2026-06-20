@@ -271,8 +271,9 @@ void App::processEvents()
     }
 
     // 3. LAST: Route input to the active scene.
-    // By doing this last, we ensure the logs accurately reflect the input
-    // that the game states are about to process.
+    // Regression guard: this single call must remain the only path from
+    // the main loop to the scene’s handleInput() (and ultimately to
+    // MenuPanel::handleInput()). Bypassing it breaks all menu navigation.
     if (m_sceneStack)
     {
         m_sceneStack->handleInput();
