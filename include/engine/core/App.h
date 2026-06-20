@@ -23,9 +23,12 @@
 // [x]: Private methods processEvents(), update(dt), render(alpha).
 // [x]: Private members Window, SceneStack — only forward-declared here.
 //       Input is a singleton (Input::instance()), so App does not own it.
+// [x]: Default UI font support — App stores a single Font pointer that
+//       all scenes can share, loaded once and cleaned up automatically.
 class Window;
 class Scene;
 class Renderer;
+class Font;
 template <typename T>
 class StateMachine;
 
@@ -74,6 +77,16 @@ public:
     // setFrameRatePreset(). Valid after construction; null before
     // construction completes or after destruction.
     [[nodiscard]] static App *getInstance() noexcept;
+
+    // Default UI font shared across all scenes.
+    // Loaded and set by game code, stored in a static pointer.
+    // Valid after setDefaultFont() has been called; null otherwise.
+    [[nodiscard]] static Font *getDefaultFont() noexcept;
+
+    // Sets the default UI font. Takes ownership of the passed pointer.
+    // Previous font is deleted if non-null. Safe to call multiple times.
+    static void setDefaultFont(Font *font) noexcept;
+
     // Native OS error dialog. Safe to call even if no App instance exists yet
     // (e.g. from main()'s top-level catch block).
     static void showErrorDialog(const char *title, const char *message);
@@ -95,4 +108,5 @@ private:
     Timer m_timer;
     std::unique_ptr<Window> m_window;
     std::unique_ptr<StateMachine<Scene>> m_sceneStack;
+    static Font *s_defaultFont; // owned by App, deleted in dtor
 };

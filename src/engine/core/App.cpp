@@ -1,8 +1,9 @@
 #include "engine/core/App.h"
 #include "engine/core/Window.h"
 #include "engine/core/Log.h"
-#include "engine/renderer/Renderer.h"
+#include "engine/renderer/Font.h"
 #include "engine/renderer/Color.h"
+#include "engine/renderer/Renderer.h"
 #include "engine/input/Input.h"
 #include "engine/input/KeyCode.h"
 #include "engine/scene/Scene.h"
@@ -99,6 +100,9 @@ namespace
 #endif
 }
 
+// [x]: Default UI font pointer — set by game code, cleaned up in dtor.
+Font *App::s_defaultFont = nullptr;
+
 // [x]: 1. SDL_Init(VIDEO | GAMEPAD). 2. Construct Window (which owns Renderer),
 //      with vsync derived from the requested frame-rate preset.
 //      3. Construct SceneStack and push initial scene. Input is a singleton
@@ -134,6 +138,10 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
 
 App::~App()
 {
+    // Clean up default font before destroying the renderer.
+    delete s_defaultFont;
+    s_defaultFont = nullptr;
+
     s_app = nullptr;
     s_sceneStack = nullptr;
     s_renderer = nullptr;
@@ -159,6 +167,19 @@ StateMachine<Scene> *App::getSceneStack() noexcept
 App *App::getInstance() noexcept
 {
     return s_app;
+}
+
+// [x]: Returns the default UI font pointer, or nullptr if not set.
+Font *App::getDefaultFont() noexcept
+{
+    return s_defaultFont;
+}
+
+// [x]: Sets the default UI font. Takes ownership; previous font deleted.
+void App::setDefaultFont(Font *font) noexcept
+{
+    delete s_defaultFont;
+    s_defaultFont = font;
 }
 
 // [x]: Native error dialog, no App instance required.
