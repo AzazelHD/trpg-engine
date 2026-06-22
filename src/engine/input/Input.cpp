@@ -187,7 +187,7 @@ int Input::keyCodeToScancode(KeyCode key)
         return SDL_SCANCODE_KP_5;
 
     case KeyCode::DebugToggle:
-        return SDL_SCANCODE_F1;
+        return SDL_SCANCODE_F12;
 
     default:
         return SDL_SCANCODE_UNKNOWN;

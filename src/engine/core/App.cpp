@@ -10,6 +10,7 @@
 #include "engine/statemachine/StateMachine.h"
 
 #include <SDL3/SDL.h>
+#include <SDL3_ttf/SDL_ttf.h>
 #include <stdexcept>
 #include <memory>
 #include <string>
@@ -118,6 +119,13 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
             std::string("SDL_Init failed: ") + SDL_GetError());
     }
 
+    if (!TTF_Init())
+    {
+        SDL_Quit(); // clean up SDL before throwing
+        throw std::runtime_error(
+            std::string("TTF_Init failed: ") + SDL_GetError());
+    }
+
     m_window = std::make_unique<Window>(title, width, height, vsyncModeForPreset(frameRatePreset));
     s_window = m_window.get();
     s_renderer = &m_window->getRenderer();
@@ -138,7 +146,6 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
 
 App::~App()
 {
-    // Clean up default font before destroying the renderer.
     delete s_defaultFont;
     s_defaultFont = nullptr;
 
@@ -146,6 +153,7 @@ App::~App()
     s_sceneStack = nullptr;
     s_renderer = nullptr;
     s_window = nullptr;
+    TTF_Quit();
     SDL_Quit();
 }
 
