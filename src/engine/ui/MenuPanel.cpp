@@ -1,4 +1,5 @@
 #include "engine/input/Input.h"
+#include "engine/input/KeyCode.h" // needed for KeyCode in update()
 #include "engine/ui/MenuPanel.h"
 #include "engine/renderer/Renderer.h"
 
@@ -50,9 +51,42 @@ void MenuPanel::handleInput()
     }
 }
 
-// [x] Renders all buttons in panel
+// [x] Full update: navigation + Accept/Back detection (recommended)
+void MenuPanel::update()
+{
+    // 1. Navigation (Up/Down/WASD)
+    handleInput();
+
+    const Input &input = Input::instance();
+
+    // 2. Activation (Accept)
+    if (input.isKeyPressed(KeyCode::Accept, false))
+    {
+        (void)activateSelected(); // fire callback, discard return
+    }
+    // 3. Cancel (Back)
+    else if (input.isKeyPressed(KeyCode::Back, false))
+    {
+        if (m_onCancel)
+            m_onCancel();
+    }
+}
+
+// [x] Renders background (if set) and all buttons
 void MenuPanel::render(Renderer *renderer) const
 {
+    // Optional background panel
+    if (m_bgRect.w > 0.f && m_bgRect.h > 0.f)
+    {
+        renderer->setBlendMode(Renderer::BlendMode::Blend);
+        renderer->setDrawColor(m_bgColor);
+        renderer->fillRect(m_bgRect);
+        // Border
+        renderer->setDrawColor(Color{180, 180, 180, 255});
+        renderer->drawRect(m_bgRect);
+    }
+
+    // Buttons
     for (const Button &button : m_buttons)
     {
         button.render(renderer);

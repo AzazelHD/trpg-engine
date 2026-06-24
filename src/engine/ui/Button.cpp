@@ -2,6 +2,8 @@
 
 #include <utility>
 
+const Font *Button::s_defaultFont = nullptr;
+
 Button::Button(Rectf rect, std::string text)
     : m_rect(rect),
       m_text(std::move(text)),
@@ -14,6 +16,8 @@ Button::Button(Rectf rect, std::string text)
 
 bool Button::activate() const
 {
+    if (m_enabled && m_onClick)
+        m_onClick();
     return m_enabled;
 }
 
@@ -41,9 +45,13 @@ void Button::render(Renderer *renderer) const
     renderer->drawRect(m_rect);
 
     renderer->setDrawColor(textColor);
-    const float textX = m_rect.x + 16.0f;
-    const float textY = m_rect.y + (m_rect.h - 12.0f) * 0.5f;
-    renderer->drawDebugText({textX, textY}, m_text.c_str());
+    if (s_defaultFont)
+        renderer->renderText(s_defaultFont, m_text,
+                             {m_rect.x + 16.0f, m_rect.y + (m_rect.h - 8.0f) * 0.5f},
+                             textColor, false, false, false);
+    else
+        renderer->drawDebugText({m_rect.x + 16.0f, m_rect.y + (m_rect.h - 12.0f) * 0.5f},
+                                m_text.c_str());
 }
 
 void Button::setEnabled(bool enabled)

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional> // NEW – for cancel callback
 #include <vector>
 #include "engine/math/Vec2.h"
 #include "engine/ui/Button.h"
@@ -10,16 +11,22 @@
 // MenuPanel manages a vertical list of selectable buttons.
 //
 // Handles navigation, selection state, and activation for UI menus.
+// Now also supports a background panel and Cancel (Back) callback.
 //
 // --- BEHAVIOUR ---
 // - [x] Only one button is selected at a time.
 // - [x] Selection wraps around when moving past edges.
 // - [x] Empty state is safe (guarded in implementation).
 // - [x] Selection visuals are synced through FocusGroup.
+// - [x] A solid background rectangle can be drawn behind the buttons.
 //
 // --- INPUT FLOW ---
-// - [x] handleInput() autonomously queries the global Input instance
-//       and routes valid presses to navigateUp / navigateDown.
+// - [x] update() autonomously queries the global Input instance and
+//       handles navigation (Up/Down), activation (Accept → activateSelected()),
+//       and cancellation (Back → onCancel callback).
+//       This is the single update entry point for the panel.
+// - [x] handleInput() still exists but only does navigation (for backwards
+//       compatibility or custom use).
 //
 // --- POSITION ---
 // - [x] m_position defines panel origin
@@ -33,7 +40,10 @@ public:
     void addButton(const Button &button);
     void addButton(Button &&button);
 
-    // Scans engine inputs and updates internal selection
+    // Full update: navigation + Accept/Back detection
+    void update();
+
+    // Legacy: only navigation (calls handleInput internally)
     void handleInput();
 
     void render(Renderer *renderer) const;
@@ -49,6 +59,24 @@ public:
     [[nodiscard]] bool empty() const;
     [[nodiscard]] std::size_t size() const;
 
+    void setOnCancel(std::function<void()> callback) { m_onCancel = std::move(callback); }
+
+    void clearButtons()
+    {
+        m_buttons.clear();
+        rebuildFocus();
+    }
+
+    void setBackground(Rectf rect, Color color)
+    {
+        m_bgRect = rect;
+        m_bgColor = color;
+    }
+
+    // Access buttons for enabling/disabling individual items
+    [[nodiscard]] std::vector<Button> &getButtons() { return m_buttons; }
+    [[nodiscard]] const std::vector<Button> &getButtons() const { return m_buttons; }
+
 private:
     void rebuildFocus();
     void refreshLayout();
@@ -58,4 +86,8 @@ private:
     Vec2f m_position{0.f, 0.f};
     VerticalLayoutConfig m_layout{};
     bool m_hasLayout = false;
+
+    std::function<void()> m_onCancel;
+    Rectf m_bgRect{};
+    Color m_bgColor{0, 0, 0, 0};
 };

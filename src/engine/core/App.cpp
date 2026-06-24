@@ -293,11 +293,12 @@ void App::processEvents()
     }
 #endif
 
-    if (input.isKeyPressed(KeyCode::Back))
-    {
-        LOG_INFO("Input", "Back pressed (Escape) -> exiting app");
-        m_running = false;
-    }
+    // QUIT GAME
+    // if (input.isKeyPressed(KeyCode::Back))
+    // {
+    //     LOG_INFO("Input", "Back pressed (Escape) -> exiting app");
+    //     m_running = false;
+    // }
 
     // 3. LAST: Route input to the active scene.
     // Regression guard: this single call must remain the only path from

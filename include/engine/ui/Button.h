@@ -1,11 +1,15 @@
 #pragma once
 
-#include <string>
 #include "engine/math/Rect.h"
 #include "engine/math/Vec2.h"
 #include "engine/ui/IFocusable.h"
 #include "engine/renderer/Color.h"
 #include "engine/renderer/Renderer.h"
+
+#include <string>
+#include <functional>
+
+class Font;
 
 class Button : public IFocusable
 {
@@ -22,6 +26,12 @@ public:
     void translate(Vec2f delta);
     [[nodiscard]] Rectf getRect() const;
 
+    // callback when the button is activated
+    void setOnClick(std::function<void()> callback) { m_onClick = std::move(callback); }
+
+    // static default font used by all buttons
+    static void setDefaultFont(const Font *font) { s_defaultFont = font; }
+
 private:
     Rectf m_rect;
     std::string m_text;
@@ -29,4 +39,7 @@ private:
     Color m_selectedColor;
     bool m_enabled;
     bool m_selected;
+
+    std::function<void()> m_onClick;
+    static const Font *s_defaultFont;
 };
