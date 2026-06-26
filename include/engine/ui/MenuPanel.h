@@ -44,7 +44,7 @@ public:
     void update();
 
     // Legacy: only navigation (calls handleInput internally)
-    void handleInput();
+    // void handleInput();
 
     void render(Renderer *renderer) const;
     void setPosition(Vec2f position);

@@ -50,6 +50,12 @@ public:
     // - allowRepeat = true:  includes OS key repeat events (for menu navigation).
     bool isKeyPressed(KeyCode key, bool allowRepeat = false) const;
 
+    // Mark a key as consumed so that isKeyPressed() returns false
+    // for the remainder of this frame. Use after a handler has fully
+    // processed a press and no later handler in the same frame
+    // should see it.
+    void consumeKey(KeyCode key);
+
     // True only on the frame the key is released.
     bool isKeyReleased(KeyCode key) const;
 
@@ -79,6 +85,9 @@ private:
     bool m_pressedThisFrame[MAX_KEYS] = {};  // non-repeat presses
     bool m_releasedThisFrame[MAX_KEYS] = {}; // releases
     bool m_repeatedThisFrame[MAX_KEYS] = {}; // OS key repeats
+    // If true, isKeyPressed() returns false for the rest of this frame.
+    // Cleared each frame in pollEvents().
+    bool m_consumedThisFrame[MAX_KEYS] = {};
 
     // ── Mouse state ───────────────────────────────────────────────────────
     Vec2f m_mousePosition = {0.0f, 0.0f};

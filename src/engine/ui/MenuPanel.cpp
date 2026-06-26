@@ -1,7 +1,8 @@
 #include "engine/input/Input.h"
-#include "engine/input/KeyCode.h" // needed for KeyCode in update()
+#include "engine/input/KeyCode.h"
 #include "engine/ui/MenuPanel.h"
 #include "engine/renderer/Renderer.h"
+#include "engine/core/Log.h"
 
 // [x] Adds button (copy version), applies panel offset and selection refresh
 void MenuPanel::addButton(const Button &button)
@@ -30,15 +31,58 @@ void MenuPanel::addButton(Button &&button)
 }
 
 // [x] Handles keyboard input for menu navigation only
-void MenuPanel::handleInput()
+// void MenuPanel::handleInput()
+// {
+//     // Single point of keyboard navigation – no other scene should read
+//     // Up/Down/WASD directly.  If you need to add game-specific input, do it
+//     // in the scene's handleInput() but only for actions *other than* menu
+//     // movement.
+//     const Input &input = Input::instance();
+
+//     // Use allowRepeat = true so users can hold arrows to scroll smoothly!
+//     bool moveUp = input.isKeyPressed(KeyCode::Up, true) || input.isKeyPressed(KeyCode::W, true);
+//     bool moveDown = input.isKeyPressed(KeyCode::Down, true) || input.isKeyPressed(KeyCode::S, true);
+
+//     if (moveUp != moveDown)
+//     {
+//         if (moveUp)
+//             navigateUp();
+//         else
+//             navigateDown();
+//     }
+// }
+
+// [x] Full update: navigation + Accept/Back detection (LEGACY)
+// void MenuPanel::update()
+// {
+//     // 1. Navigation (Up/Down/WASD)
+//     handleInput();
+
+//     const Input &input = Input::instance();
+
+//     // 2. Activation (Accept)
+//     bool acceptDown = input.isKeyPressed(KeyCode::Accept, false);
+//     if (input.isKeyPressed(KeyCode::Accept, false))
+//     {
+//         (void)activateSelected(); // fire callback, discard return
+//     }
+//     // 3. Cancel (Back)
+//     else if (input.isKeyPressed(KeyCode::Back, false))
+//     {
+//         if (m_onCancel)
+//             m_onCancel();
+//     }
+// }
+
+// [x] Consolidated update: navigation + Accept/Back detection.
+// Replaces the legacy handleInput() method. Handles all menu input
+// (arrow keys/WASD for navigation, Accept to activate selected,
+// Back to cancel) in a single method called each frame while the menu is open.
+void MenuPanel::update()
 {
-    // Single point of keyboard navigation – no other scene should read
-    // Up/Down/WASD directly.  If you need to add game-specific input, do it
-    // in the scene's handleInput() but only for actions *other than* menu
-    // movement.
     const Input &input = Input::instance();
 
-    // Use allowRepeat = true so users can hold arrows to scroll smoothly!
+    // 1. Navigation (Up/Down/WASD)
     bool moveUp = input.isKeyPressed(KeyCode::Up, true) || input.isKeyPressed(KeyCode::W, true);
     bool moveDown = input.isKeyPressed(KeyCode::Down, true) || input.isKeyPressed(KeyCode::S, true);
 
@@ -49,15 +93,6 @@ void MenuPanel::handleInput()
         else
             navigateDown();
     }
-}
-
-// [x] Full update: navigation + Accept/Back detection (recommended)
-void MenuPanel::update()
-{
-    // 1. Navigation (Up/Down/WASD)
-    handleInput();
-
-    const Input &input = Input::instance();
 
     // 2. Activation (Accept)
     if (input.isKeyPressed(KeyCode::Accept, false))

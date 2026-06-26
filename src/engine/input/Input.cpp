@@ -1,4 +1,6 @@
 #include "engine/input/Input.h"
+#include "engine/core/Log.h"
+
 #include <SDL3/SDL.h>
 #include <cstring>
 
@@ -22,6 +24,7 @@ bool Input::pollEvents()
     std::memset(m_pressedThisFrame, 0, sizeof(m_pressedThisFrame));
     std::memset(m_releasedThisFrame, 0, sizeof(m_releasedThisFrame));
     std::memset(m_repeatedThisFrame, 0, sizeof(m_repeatedThisFrame));
+    std::memset(m_consumedThisFrame, 0, sizeof(m_consumedThisFrame));
 
     bool quitRequested = false;
     SDL_Event event;
@@ -38,6 +41,7 @@ bool Input::pollEvents()
         case SDL_EVENT_KEY_DOWN:
         {
             int sc = event.key.scancode;
+            LOG_INFO("Input", "Key down scancode = %d", sc);
             if (sc >= 0 && sc < MAX_KEYS)
             {
                 m_currentKeys[sc] = true;
@@ -89,13 +93,24 @@ bool Input::isKeyDown(KeyCode key) const
 bool Input::isKeyPressed(KeyCode key, bool allowRepeat) const
 {
     int sc = keyCodeToScancode(key);
+
     if (sc < 0 || sc >= MAX_KEYS)
+        return false;
+
+    if (m_consumedThisFrame[sc])
         return false;
 
     if (allowRepeat)
         return m_pressedThisFrame[sc] || m_repeatedThisFrame[sc];
 
     return m_pressedThisFrame[sc];
+}
+
+void Input::consumeKey(KeyCode key)
+{
+    int sc = keyCodeToScancode(key);
+    if (sc >= 0 && sc < MAX_KEYS)
+        m_consumedThisFrame[sc] = true;
 }
 
 bool Input::isKeyReleased(KeyCode key) const
