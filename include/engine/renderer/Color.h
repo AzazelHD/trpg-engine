@@ -43,4 +43,14 @@ struct FColor
     constexpr FColor() = default;
     constexpr FColor(float r_, float g_, float b_, float a_ = 1.0f)
         : r(r_), g(g_), b(b_), a(a_) {}
+
+    static constexpr FColor black() { return FColor{0.0f, 0.0f, 0.0f, 1.0f}; }
+    static constexpr FColor white() { return FColor{1.0f, 1.0f, 1.0f, 1.0f}; }
+    static constexpr FColor transparent() { return FColor{0.0f, 0.0f, 0.0f, 0.0f}; }
+
+    // Implicit conversion from integer Color (0-255 -> 0.0-1.0)
+    FColor(const Color &c)
+        : r(c.r / 255.0f), g(c.g / 255.0f), b(c.b / 255.0f), a(c.a / 255.0f)
+    {
+    }
 };
