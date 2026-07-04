@@ -12,6 +12,43 @@ namespace
 {
     SDL_FRect toSDL(Rectf r) { return {r.x, r.y, r.w, r.h}; }
     SDL_FRect toSDL(Recti r) { return {(float)r.x, (float)r.y, (float)r.w, (float)r.h}; }
+
+    int toTTFStyle(bool bold, bool italic, bool underline)
+    {
+        int style = TTF_STYLE_NORMAL;
+        if (bold)
+            style |= TTF_STYLE_BOLD;
+        if (italic)
+            style |= TTF_STYLE_ITALIC;
+        if (underline)
+            style |= TTF_STYLE_UNDERLINE;
+        return style;
+    }
+
+    // Applies a temporary font style and restores the previous one on scope
+    // exit (including early returns), so measureText/renderText never leave
+    // the shared TTF_Font mutated after they return.
+    class ScopedFontStyle
+    {
+    public:
+        ScopedFontStyle(TTF_Font *font, int style)
+            : m_font(font), m_previousStyle(TTF_GetFontStyle(font))
+        {
+            TTF_SetFontStyle(m_font, style);
+        }
+
+        ~ScopedFontStyle()
+        {
+            TTF_SetFontStyle(m_font, m_previousStyle);
+        }
+
+        ScopedFontStyle(const ScopedFontStyle &) = delete;
+        ScopedFontStyle &operator=(const ScopedFontStyle &) = delete;
+
+    private:
+        TTF_Font *m_font;
+        int m_previousStyle;
+    };
 }
 
 // -----------------------------------------------------------------------------
@@ -231,15 +268,7 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
         return;
 
     TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
-
-    int style = TTF_STYLE_NORMAL;
-    if (bold)
-        style |= TTF_STYLE_BOLD;
-    if (italic)
-        style |= TTF_STYLE_ITALIC;
-    if (underline)
-        style |= TTF_STYLE_UNDERLINE;
-    TTF_SetFontStyle(ttfFont, style);
+    ScopedFontStyle styleGuard(ttfFont, toTTFStyle(bold, italic, underline));
 
     SDL_Color sdlColor{color.r, color.g, color.b, color.a};
     SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
@@ -266,24 +295,13 @@ Vec2f Renderer::measureText(const Font *font, const std::string &text,
         return Vec2f{0.0f, 0.0f};
 
     TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
+    ScopedFontStyle styleGuard(ttfFont, toTTFStyle(bold, italic, underline));
 
-    int style = TTF_STYLE_NORMAL;
-    if (bold)
-        style |= TTF_STYLE_BOLD;
-    if (italic)
-        style |= TTF_STYLE_ITALIC;
-    if (underline)
-        style |= TTF_STYLE_UNDERLINE;
-    TTF_SetFontStyle(ttfFont, style);
-
-    SDL_Color sdlColor{255, 255, 255, 255};
-    SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
-    if (!surface)
+    int w = 0, h = 0;
+    if (!TTF_GetStringSize(ttfFont, text.c_str(), 0, &w, &h))
         return Vec2f{0.0f, 0.0f};
 
-    const Vec2f size{static_cast<float>(surface->w), static_cast<float>(surface->h)};
-    SDL_DestroySurface(surface);
-    return size;
+    return Vec2f{static_cast<float>(w), static_cast<float>(h)};
 }
 
 bool Renderer::setFontWrapAlignment(const Font *font, HorizontalAlign align) const
