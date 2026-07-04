@@ -85,6 +85,8 @@ namespace
         {KeyCode::A, "A"},
         {KeyCode::S, "S"},
         {KeyCode::D, "D"},
+        {KeyCode::Q, "Q"},
+        {KeyCode::E, "E"},
         {KeyCode::Accept, "Accept"},
         {KeyCode::Back, "Back"},
         {KeyCode::Pause, "Pause"},

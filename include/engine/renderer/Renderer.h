@@ -89,6 +89,20 @@ struct SDL_Renderer;
 class Renderer
 {
 public:
+    enum class HorizontalAlign
+    {
+        Left,
+        Center,
+        Right
+    };
+
+    enum class VerticalAlign
+    {
+        Top,
+        Middle,
+        Bottom
+    };
+
     enum class BlendMode
     {
         None,
@@ -159,6 +173,30 @@ public:
     // - bold/italic/underline: style flags applied per call
     void renderText(const Font *font, const std::string &text, Vec2f pos, Color color,
                     bool bold = false, bool italic = false, bool underline = false);
+
+    // Returns rendered text bounds for the given style flags.
+    Vec2f measureText(const Font *font, const std::string &text,
+                      bool bold = false, bool italic = false, bool underline = false) const;
+
+    // Maps engine alignment to SDL_ttf wrap alignment on a font resource.
+    bool setFontWrapAlignment(const Font *font, HorizontalAlign align) const;
+    HorizontalAlign getFontWrapAlignment(const Font *font) const;
+
+    // Computes a top-left point that places contentSize inside rect using the given alignment.
+    Vec2f alignInRect(Rectf rect, Vec2f contentSize,
+                      HorizontalAlign hAlign = HorizontalAlign::Left,
+                      VerticalAlign vAlign = VerticalAlign::Top) const;
+
+    // Renders single-line text aligned inside a rectangle.
+    void renderTextInRect(const Font *font,
+                          const std::string &text,
+                          Rectf rect,
+                          Color color,
+                          HorizontalAlign hAlign = HorizontalAlign::Left,
+                          VerticalAlign vAlign = VerticalAlign::Top,
+                          bool bold = false,
+                          bool italic = false,
+                          bool underline = false);
 
     void drawTexture(const Texture *texture,
                      Recti src,

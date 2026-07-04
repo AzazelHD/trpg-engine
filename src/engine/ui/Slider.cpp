@@ -60,12 +60,17 @@ void Slider::render(Renderer *renderer) const
     if (!renderer || m_track.w <= 0.0f || m_max == m_min)
         return;
 
+    const float trackHeight = std::max(1.0f, m_style.trackHeight);
+    const float handleWidth = std::max(2.0f, m_style.handleWidth);
+    const float handleHeight = std::max(trackHeight, m_style.handleHeight);
+    const float trackY = m_track.y + (m_track.h - trackHeight) * 0.5f + m_style.offsetY;
+
     // --- Track ---
     SDL_FRect trackRect = {
         m_track.x,
-        m_track.y,
+        trackY,
         m_track.w,
-        m_track.h};
+        trackHeight};
 
     renderer->setDrawColor(Color{80, 80, 80, 255});
     renderer->fillRect({trackRect.x, trackRect.y, trackRect.w, trackRect.h});
@@ -74,13 +79,14 @@ void Slider::render(Renderer *renderer) const
     const float t = normalized();
 
     // --- Handle position ---
-    const float handleX = m_track.x + t * m_track.w - 5.0f;
+    const float handleX = m_track.x + t * m_track.w - handleWidth * 0.5f;
+    const float handleY = trackY + (trackHeight - handleHeight) * 0.5f;
 
     SDL_FRect handleRect = {
         handleX,
-        m_track.y - 2.0f,
-        10.0f,
-        m_track.h + 4.0f};
+        handleY,
+        handleWidth,
+        handleHeight};
 
     renderer->setDrawColor(Color{220, 220, 220, 255});
     renderer->fillRect({handleRect.x, handleRect.y, handleRect.w, handleRect.h});

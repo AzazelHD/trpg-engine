@@ -1,5 +1,6 @@
 #include "engine/ui/Button.h"
 
+#include <algorithm>
 #include <utility>
 
 const Font *Button::s_defaultFont = nullptr;
@@ -46,9 +47,24 @@ void Button::render(Renderer *renderer) const
 
     renderer->setDrawColor(textColor);
     if (s_defaultFont)
-        renderer->renderText(s_defaultFont, m_text,
-                             {m_rect.x + 16.0f, m_rect.y + (m_rect.h - 8.0f) * 0.5f},
-                             textColor, false, false, false);
+    {
+        const Rectf contentRect{
+            m_rect.x + m_padding.left,
+            m_rect.y + m_padding.top,
+            std::max(0.0f, m_rect.w - (m_padding.left + m_padding.right)),
+            std::max(0.0f, m_rect.h - (m_padding.top + m_padding.bottom)),
+        };
+        renderer->renderTextInRect(
+            s_defaultFont,
+            m_text,
+            contentRect,
+            textColor,
+            m_textAlignH,
+            m_textAlignV,
+            false,
+            false,
+            false);
+    }
     else
         renderer->drawDebugText({m_rect.x + 16.0f, m_rect.y + (m_rect.h - 12.0f) * 0.5f},
                                 m_text.c_str());

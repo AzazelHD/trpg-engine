@@ -10,6 +10,14 @@
 class Slider
 {
 public:
+    struct RenderStyle
+    {
+        float trackHeight = 8.0f;
+        float handleWidth = 10.0f;
+        float handleHeight = 16.0f;
+        float offsetY = 0.0f;
+    };
+
     void setTrackRect(Rectf track);
     void setRange(float min, float max);
     void setValue(float value);
@@ -18,10 +26,13 @@ public:
     void step(float delta);
     float getValue() const;
     float normalized() const;
+    void setRenderStyle(const RenderStyle &style) { m_style = style; }
+    [[nodiscard]] const RenderStyle &getRenderStyle() const { return m_style; }
 
 private:
     Rectf m_track{};
     float m_min = 0.0f;
     float m_max = 1.0f;
     float m_value = 0.0f;
+    RenderStyle m_style{};
 };

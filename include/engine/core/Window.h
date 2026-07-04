@@ -49,6 +49,10 @@ public:
     void setTitle(const char *title);
     void setResizable(bool enabled);
     void setAspectRatio(float minAspect, float maxAspect);
+    void setSize(int width, int height);
+    void maximize();
+    void setBorderless(bool enabled);
+    void setBorderlessWindowed(bool enabled);
     // Changes vsync on the live SDL_Renderer. Throws on failure (e.g. an
     // unsupported mode on the current driver).
     void setVSync(VSyncMode mode);
@@ -58,7 +62,7 @@ private:
     SDL_Window *m_window = nullptr;
     SDL_Renderer *m_sdlRenderer = nullptr;
     Renderer m_renderer;
-    const int m_width;
-    const int m_height;
+    int m_width;
+    int m_height;
     VSyncMode m_vsync;
 };

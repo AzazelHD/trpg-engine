@@ -174,6 +174,10 @@ int Input::keyCodeToScancode(KeyCode key)
         return SDL_SCANCODE_S;
     case KeyCode::D:
         return SDL_SCANCODE_D;
+    case KeyCode::Q:
+        return SDL_SCANCODE_Q;
+    case KeyCode::E:
+        return SDL_SCANCODE_E;
 
     case KeyCode::Accept:
         return SDL_SCANCODE_RETURN;

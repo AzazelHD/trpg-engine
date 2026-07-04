@@ -6,6 +6,8 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3_image/SDL_image.h>
 
+#include <cmath>
+
 namespace
 {
     SDL_FRect toSDL(Rectf r) { return {r.x, r.y, r.w, r.h}; }
@@ -255,6 +257,114 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     SDL_FRect dst{pos.x, pos.y, w, h};
     SDL_RenderTexture(m_renderer, texture, nullptr, &dst);
     SDL_DestroyTexture(texture);
+}
+
+Vec2f Renderer::measureText(const Font *font, const std::string &text,
+                            bool bold, bool italic, bool underline) const
+{
+    if (!font || !font->m_font || text.empty())
+        return Vec2f{0.0f, 0.0f};
+
+    TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
+
+    int style = TTF_STYLE_NORMAL;
+    if (bold)
+        style |= TTF_STYLE_BOLD;
+    if (italic)
+        style |= TTF_STYLE_ITALIC;
+    if (underline)
+        style |= TTF_STYLE_UNDERLINE;
+    TTF_SetFontStyle(ttfFont, style);
+
+    SDL_Color sdlColor{255, 255, 255, 255};
+    SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
+    if (!surface)
+        return Vec2f{0.0f, 0.0f};
+
+    const Vec2f size{static_cast<float>(surface->w), static_cast<float>(surface->h)};
+    SDL_DestroySurface(surface);
+    return size;
+}
+
+bool Renderer::setFontWrapAlignment(const Font *font, HorizontalAlign align) const
+{
+    if (!font || !font->m_font)
+        return false;
+
+    auto *ttfFont = static_cast<TTF_Font *>(font->m_font);
+    TTF_HorizontalAlignment sdlAlign = TTF_HORIZONTAL_ALIGN_LEFT;
+    switch (align)
+    {
+    case HorizontalAlign::Left:
+        sdlAlign = TTF_HORIZONTAL_ALIGN_LEFT;
+        break;
+    case HorizontalAlign::Center:
+        sdlAlign = TTF_HORIZONTAL_ALIGN_CENTER;
+        break;
+    case HorizontalAlign::Right:
+        sdlAlign = TTF_HORIZONTAL_ALIGN_RIGHT;
+        break;
+    }
+
+    TTF_SetFontWrapAlignment(ttfFont, sdlAlign);
+    return true;
+}
+
+Renderer::HorizontalAlign Renderer::getFontWrapAlignment(const Font *font) const
+{
+    if (!font || !font->m_font)
+        return HorizontalAlign::Left;
+
+    auto *ttfFont = static_cast<TTF_Font *>(font->m_font);
+    const TTF_HorizontalAlignment sdlAlign = TTF_GetFontWrapAlignment(ttfFont);
+    switch (sdlAlign)
+    {
+    case TTF_HORIZONTAL_ALIGN_CENTER:
+        return HorizontalAlign::Center;
+    case TTF_HORIZONTAL_ALIGN_RIGHT:
+        return HorizontalAlign::Right;
+    case TTF_HORIZONTAL_ALIGN_LEFT:
+    default:
+        return HorizontalAlign::Left;
+    }
+}
+
+Vec2f Renderer::alignInRect(Rectf rect, Vec2f contentSize,
+                            HorizontalAlign hAlign,
+                            VerticalAlign vAlign) const
+{
+    Vec2f out{rect.x, rect.y};
+
+    if (hAlign == HorizontalAlign::Center)
+        out.x = rect.x + (rect.w - contentSize.x) * 0.5f;
+    else if (hAlign == HorizontalAlign::Right)
+        out.x = rect.x + rect.w - contentSize.x;
+
+    if (vAlign == VerticalAlign::Middle)
+        out.y = rect.y + (rect.h - contentSize.y) * 0.5f;
+    else if (vAlign == VerticalAlign::Bottom)
+        out.y = rect.y + rect.h - contentSize.y;
+
+    // Snap to integer pixel coordinates to avoid half-pixel drift and 1px bias.
+    out.x = std::round(out.x);
+    out.y = std::round(out.y);
+
+    return out;
+}
+
+void Renderer::renderTextInRect(const Font *font,
+                                const std::string &text,
+                                Rectf rect,
+                                Color color,
+                                HorizontalAlign hAlign,
+                                VerticalAlign vAlign,
+                                bool bold,
+                                bool italic,
+                                bool underline)
+{
+    const Vec2f textSize = measureText(font, text, bold, italic, underline);
+    const Vec2f pos = alignInRect(rect, textSize, hAlign, vAlign);
+    renderText(font, text, pos, color, bold, italic, underline);
 }
 
 // [x] drawTexture(): SDL_RenderTexture, or SDL_RenderTextureRotated(angle=0, flip=H)
