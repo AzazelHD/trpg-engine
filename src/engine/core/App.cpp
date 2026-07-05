@@ -131,6 +131,12 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
     m_window = std::make_unique<Window>(title, width, height, vsyncModeForPreset(frameRatePreset));
     s_window = m_window.get();
     s_renderer = &m_window->getRenderer();
+
+    // Establish the logical (design-resolution) canvas once, globally, so
+    // every state's rendering scales/letterboxes correctly regardless of
+    // the actual window size — not just inside BattleState.
+    s_renderer->setLogicalPresentation(width, height, Renderer::PresentationMode::Letterbox);
+
     m_sceneStack = std::make_unique<StateMachine<Scene>>();
     s_sceneStack = m_sceneStack.get();
     s_app = this;

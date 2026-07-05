@@ -19,22 +19,22 @@ bool Button::activate() const
 {
     if (m_enabled && m_onClick)
         m_onClick();
+
     return m_enabled;
 }
 
 void Button::render(Renderer *renderer) const
 {
     if (!renderer)
-
         return;
 
-    Color fillColor = m_enabled ? Color{60, 60, 60, 255} : Color{96, 96, 96, 255};
+    Color fillColor = m_enabled ? m_normalColor : Color{96, 96, 96, 255};
     Color borderColor = m_enabled ? Color{32, 32, 32, 255} : Color{128, 128, 128, 255};
     Color textColor = Color{240, 240, 240, 255};
 
     if (m_enabled && m_selected)
     {
-        fillColor = Color{200, 40, 40, 255};
+        fillColor = m_selectedColor;
         borderColor = Color{255, 120, 120, 255};
         textColor = Color{255, 255, 255, 255};
     }
@@ -66,8 +66,12 @@ void Button::render(Renderer *renderer) const
             false);
     }
     else
-        renderer->drawDebugText({m_rect.x + 16.0f, m_rect.y + (m_rect.h - 12.0f) * 0.5f},
-                                m_text.c_str());
+    {
+        renderer->drawDebugText(
+            {m_rect.x + m_padding.left,
+             m_rect.y + (m_rect.h - 12.0f) * 0.5f},
+            m_text.c_str());
+    }
 }
 
 void Button::setEnabled(bool enabled)
@@ -107,7 +111,7 @@ void Button::translate(Vec2f delta)
     m_rect.y += delta.y;
 }
 
-Rectf Button::getRect() const
+[[nodiscard]] Rectf Button::getRect() const
 {
     return m_rect;
 }

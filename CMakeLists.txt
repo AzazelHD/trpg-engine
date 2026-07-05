@@ -39,6 +39,7 @@ add_library(engine STATIC
     src/engine/ui/MenuPanel.cpp
     src/engine/ui/Slider.cpp
     src/engine/ui/TextLabel.cpp
+    src/engine/ui/Insets.h
 )
 
 add_library(TRPG::engine ALIAS engine)

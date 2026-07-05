@@ -9,14 +9,21 @@ class FocusGroup
 {
 public:
     template <typename Container>
+
     void reset(Container &items)
     {
+        int previous = m_selectedIndex;
+
         m_items.clear();
+        m_selectedIndex = -1;
 
         for (auto &item : items)
         {
             m_items.push_back(&item);
         }
+
+        if (previous >= 0 && previous < static_cast<int>(m_items.size()))
+            m_selectedIndex = previous;
 
         refresh();
     }
@@ -29,8 +36,16 @@ public:
 
     void refresh()
     {
-        if (m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_items.size()) ||
-            m_items[m_selectedIndex] == nullptr || !m_items[m_selectedIndex]->isEnabled())
+        if (m_items.empty())
+        {
+            m_selectedIndex = -1;
+            return;
+        }
+
+        if (m_selectedIndex < 0 ||
+            m_selectedIndex >= static_cast<int>(m_items.size()) ||
+            m_items[m_selectedIndex] == nullptr ||
+            !m_items[m_selectedIndex]->isEnabled())
         {
             m_selectedIndex = findFirstEnabledIndex();
         }
@@ -40,25 +55,32 @@ public:
 
     void focusPrevious()
     {
+        if (m_items.empty())
+            return;
+
         m_selectedIndex = findNextEnabledIndex(-1);
         applySelection();
     }
 
     void focusNext()
     {
+        if (m_items.empty())
+            return;
+
         m_selectedIndex = findNextEnabledIndex(1);
         applySelection();
     }
 
     [[nodiscard]] bool activateSelected() const
     {
-        if (m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_items.size()))
-        {
+        if (m_items.empty())
             return false;
-        }
+
+        if (m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_items.size()))
+            return false;
 
         const IFocusable *item = m_items[m_selectedIndex];
-        return item != nullptr && item->activate();
+        return item && item->activate();
     }
 
     [[nodiscard]] int getSelectedIndex() const
@@ -121,13 +143,13 @@ private:
 
     void applySelection()
     {
-        for (int index = 0; index < static_cast<int>(m_items.size()); ++index)
+        for (int i = 0; i < static_cast<int>(m_items.size()); ++i)
         {
-            IFocusable *item = m_items[index];
-            if (item != nullptr)
-            {
-                item->setSelected(index == m_selectedIndex);
-            }
+            IFocusable *item = m_items[i];
+            if (!item)
+                continue;
+
+            item->setSelected(static_cast<int>(i) == m_selectedIndex);
         }
     }
 

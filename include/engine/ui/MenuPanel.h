@@ -1,12 +1,15 @@
 #pragma once
 
-#include <functional> // NEW – for cancel callback
-#include <vector>
 #include "engine/math/Vec2.h"
 #include "engine/ui/Button.h"
 #include "engine/ui/FocusGroup.h"
+#include "engine/ui/Insets.h"
 #include "engine/ui/VerticalLayout.h"
-#include "engine/renderer/Renderer.h"
+
+#include <functional>
+#include <vector>
+
+class Renderer;
 
 // MenuPanel manages a vertical list of selectable buttons.
 //
@@ -43,13 +46,21 @@ public:
     // Full update: navigation + Accept/Back detection
     void update();
 
-    // Legacy: only navigation (calls handleInput internally)
-    // void handleInput();
-
     void render(Renderer *renderer) const;
     void setPosition(Vec2f position);
     void setVerticalLayout(const VerticalLayoutConfig &layout);
     void clearLayout();
+
+    void setPadding(Insets padding)
+    {
+        m_padding = padding;
+        refreshLayout();
+    }
+
+    [[nodiscard]] Insets getPadding() const
+    {
+        return m_padding;
+    }
 
     void navigateUp();
     void navigateDown();
@@ -59,7 +70,10 @@ public:
     [[nodiscard]] bool empty() const;
     [[nodiscard]] std::size_t size() const;
 
-    void setOnCancel(std::function<void()> callback) { m_onCancel = std::move(callback); }
+    void setOnCancel(std::function<void()> callback)
+    {
+        m_onCancel = std::move(callback);
+    }
 
     void clearButtons()
     {
@@ -83,11 +97,16 @@ private:
 
     std::vector<Button> m_buttons;
     FocusGroup m_focus;
+
     Vec2f m_position{0.f, 0.f};
+
     VerticalLayoutConfig m_layout{};
     bool m_hasLayout = false;
 
+    Insets m_padding{};
+
     std::function<void()> m_onCancel;
+
     Rectf m_bgRect{};
     Color m_bgColor{0, 0, 0, 0};
 };
