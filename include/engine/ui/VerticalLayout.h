@@ -4,6 +4,9 @@
 #include "engine/math/Vec2.h"
 #include "engine/ui/Insets.h"
 
+#include <vector>
+#include <algorithm>
+
 enum class HorizontalAlignment
 {
     Left,
@@ -62,5 +65,33 @@ public:
             widget.setPosition({x, currentY});
             currentY += rect.h + config.spacing;
         }
+    }
+
+    // Pure-geometry stacking: no widget objects required, just a list of
+    // {width, height, margin} boxes. Each item's own margin (.top/.bottom
+    // drive vertical spacing here) is honoured individually. Handy for
+    // states that draw rows directly in render() rather than owning
+    // persistent widget objects.
+    struct Item
+    {
+        float width = 0.0f;
+        float height = 0.0f;
+        Insets margin{}; // only .top/.bottom/.left are used here
+    };
+
+    static std::vector<Rectf> stack(const std::vector<Item> &items, Vec2f origin)
+    {
+        std::vector<Rectf> out;
+        out.reserve(items.size());
+
+        float currentY = origin.y;
+        for (const Item &item : items)
+        {
+            currentY += item.margin.top;
+            out.push_back(Rectf{origin.x + item.margin.left, currentY, item.width, item.height});
+            currentY += item.height + item.margin.bottom;
+        }
+
+        return out;
     }
 };

@@ -100,8 +100,8 @@ private:
 
     Vec2f m_position{0.f, 0.f};
 
-    VerticalLayoutConfig m_layout{};
-    bool m_hasLayout = false;
+    VerticalLayoutConfig m_layout{.spacing = 8.0f};
+    bool m_hasLayout = true;
 
     Insets m_padding{};
 

@@ -63,6 +63,7 @@ enum class KeyCode
     Back,    // was Cancel (Escape or X)
     Pause,   // P
     Advance, // was DialogAdvance (Space or Enter)
+    Details, // Tab
 
     // Camera controls
     CameraPanUp,

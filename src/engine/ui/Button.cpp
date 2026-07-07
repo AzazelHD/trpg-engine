@@ -111,7 +111,7 @@ void Button::translate(Vec2f delta)
     m_rect.y += delta.y;
 }
 
-[[nodiscard]] Rectf Button::getRect() const
+Rectf Button::getRect() const
 {
     return m_rect;
 }
