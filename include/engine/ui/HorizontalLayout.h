@@ -38,4 +38,61 @@ public:
 
         return out;
     }
+
+    // Bounding box that fully wraps a row of items placed by stack() from
+    // origin, expanded by `padding` — a self-sizing container derived FROM
+    // its children, instead of a hand-picked width kept in sync by hand.
+    static Rectf computeBounds(const std::vector<Item> &items, Vec2f origin, Insets padding)
+    {
+        float maxH = 0.0f;
+        for (const Item &item : items)
+            maxH = std::max(maxH, item.margin.top + item.height);
+
+        return Rectf{
+            origin.x - padding.left,
+            origin.y - padding.top,
+            measureTotalWidth(items) + padding.left + padding.right,
+            maxH + padding.top + padding.bottom};
+    }
+
+    static float measureTotalWidth(const std::vector<Item> &items)
+    {
+        float total = 0.0f;
+        for (const Item &item : items)
+            total += item.margin.left + item.width + item.margin.right;
+        return total;
+    }
+
+    // A named group of items sized as ONE self-sizing box (computeBounds).
+    // Several independent Containers — each with its own items/padding —
+    // can then sit on the same line via layoutRow(), separated by `gap`.
+    // This is the "2 cajas separadas en la misma línea" case: each
+    // Container is its own box, not a shared box split into columns.
+    struct Container
+    {
+        std::vector<Item> items;
+        Insets padding{};
+    };
+
+    struct ContainerResult
+    {
+        Rectf box;                    // the container's own background box
+        std::vector<Rectf> itemRects; // its inner items, already positioned
+    };
+
+    static std::vector<ContainerResult> layoutRow(const std::vector<Container> &containers, Vec2f origin, float gap)
+    {
+        std::vector<ContainerResult> out;
+        out.reserve(containers.size());
+        float currentX = origin.x;
+        for (const Container &c : containers)
+        {
+            const Vec2f contentOrigin{currentX + c.padding.left, origin.y + c.padding.top};
+            const Rectf box = computeBounds(c.items, contentOrigin, c.padding);
+            const std::vector<Rectf> itemRects = stack(c.items, contentOrigin);
+            out.push_back(ContainerResult{box, itemRects});
+            currentX = box.x + box.w + gap;
+        }
+        return out;
+    }
 };
