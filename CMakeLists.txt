@@ -28,6 +28,7 @@ add_library(engine STATIC
     src/engine/data/TiledJsonLoader.cpp
     src/engine/input/Input.cpp
     src/engine/renderer/Font.cpp
+    src/engine/renderer/FontManager.cpp
     src/engine/renderer/Camera.cpp
     src/engine/renderer/DebugRenderer.cpp
     src/engine/renderer/SpriteBatch.cpp
