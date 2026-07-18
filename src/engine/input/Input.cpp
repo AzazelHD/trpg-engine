@@ -35,8 +35,10 @@ bool Input::pollEvents()
         switch (event.type)
         {
         case SDL_EVENT_QUIT:
+        {
             quitRequested = true;
             break;
+        }
 
         case SDL_EVENT_KEY_DOWN:
         {
