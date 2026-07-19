@@ -40,6 +40,9 @@ add_library(engine STATIC
     src/engine/ui/MenuPanel.cpp
     src/engine/ui/Slider.cpp
     src/engine/ui/TextLabel.cpp
+    src/engine/ui/ButtonControl.cpp
+    src/engine/ui/SliderControl.cpp
+    src/engine/ui/ValueControl.cpp
     )
 
 add_library(TRPG::engine ALIAS engine)

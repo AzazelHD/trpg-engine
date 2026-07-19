@@ -83,6 +83,37 @@ public:
         return item && item->activate();
     }
 
+    // For polymorphic/pointer-owned items (e.g. std::vector<std::unique_ptr<IFocusable>>)
+    // that reset()'s address-of-value template can't handle directly.
+    void resetFromPointers(std::vector<IFocusable *> items)
+    {
+        int previous = m_selectedIndex;
+
+        m_items = std::move(items);
+        m_selectedIndex = -1;
+
+        if (previous >= 0 && previous < static_cast<int>(m_items.size()))
+            m_selectedIndex = previous;
+
+        refresh();
+    }
+
+    [[nodiscard]] bool handleSelectedLeft() const
+    {
+        if (m_items.empty() || m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_items.size()))
+            return false;
+        IFocusable *item = m_items[m_selectedIndex];
+        return item && item->handleLeft();
+    }
+
+    [[nodiscard]] bool handleSelectedRight() const
+    {
+        if (m_items.empty() || m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_items.size()))
+            return false;
+        IFocusable *item = m_items[m_selectedIndex];
+        return item && item->handleRight();
+    }
+
     [[nodiscard]] int getSelectedIndex() const
     {
         return m_selectedIndex;
