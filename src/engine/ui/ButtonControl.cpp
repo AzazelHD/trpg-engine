@@ -1,4 +1,3 @@
-// ButtonControl.cpp
 #include "engine/ui/ButtonControl.h"
 
 #include "engine/renderer/Font.h"
@@ -13,9 +12,7 @@ void ButtonControl::render(Renderer *renderer, const Font *font, Rectf rect, flo
     const std::string rawLabel = m_getLabel();
 
     // If the game provided a formatter, use it; otherwise keep the label unchanged.
-    const std::string formatted = m_labelFormatter
-                                      ? m_labelFormatter(rawLabel, m_selected)
-                                      : rawLabel; // engine default: no decoration
+    const std::string formatted = m_labelFormatter ? m_labelFormatter(rawLabel, m_selected) : rawLabel;
 
     renderer->renderTextInRect(font, formatted, rect,
                                m_selected ? selectedColor : normalColor,

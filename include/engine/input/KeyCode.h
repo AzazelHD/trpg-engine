@@ -38,7 +38,7 @@
 // By using this enum, game code never depends on SDL headers directly.
 //
 // Rename note (v0.1.0):
-//   Confirm       -> Accept
+//   Confirm       -> ButtonPressed
 //   Cancel        -> Back
 //   DialogAdvance -> Advance
 //

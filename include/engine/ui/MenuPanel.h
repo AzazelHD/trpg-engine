@@ -25,7 +25,7 @@ class Renderer;
 //
 // --- INPUT FLOW ---
 // - [x] update() autonomously queries the global Input instance and
-//       handles navigation (Up/Down), activation (Accept → activateSelected()),
+//       handles navigation (Up/Down), activation (ButtonPressed → activateSelected()),
 //       and cancellation (Back → onCancel callback).
 //       This is the single update entry point for the panel.
 // - [x] handleInput() still exists but only does navigation (for backwards
@@ -43,7 +43,7 @@ public:
     void addButton(const Button &button);
     void addButton(Button &&button);
 
-    // Full update: navigation + Accept/Back detection
+    // Full update: navigation + ButtonPressed/Back detection
     void update();
 
     void render(Renderer *renderer) const;

@@ -1,4 +1,3 @@
-// ButtonControl.h
 #pragma once
 
 #include "engine/ui/IRowControl.h"
@@ -9,31 +8,23 @@
 class ButtonControl : public IRowControl
 {
 public:
-    // ----- existing label getter & action callback -----
-    ButtonControl(std::function<std::string()> getLabel, std::function<void()> onAccept)
-        : m_getLabel(std::move(getLabel)), m_onAccept(std::move(onAccept))
-    {
-    }
-
-    // ----- NEW: label formatter type -----
-    // Takes the raw label string and a 'selected' flag, returns the final rendered string.
     using LabelFormatter = std::function<std::string(const std::string &, bool)>;
 
-    // ----- NEW: set a game‑specific label formatter -----
-    void setLabelFormatter(LabelFormatter fmt)
+    ButtonControl(std::function<std::string()> getLabel, std::function<void()> onClick)
+        : m_getLabel(std::move(getLabel)), m_onClick(std::move(onClick))
     {
-        m_labelFormatter = std::move(fmt);
     }
 
-    // ----- existing interface (unchanged) -----
+    void setLabelFormatter(LabelFormatter fmt) { m_labelFormatter = std::move(fmt); }
+
     float measureWidth(Renderer *, const Font *, float) const override { return 0.0f; }
     void render(Renderer *renderer, const Font *font, Rectf rect, float ui,
                 Color normalColor, Color selectedColor) const override;
 
     bool activate() const override
     {
-        if (m_onAccept)
-            m_onAccept();
+        if (m_onClick)
+            m_onClick();
         return true;
     }
     void setSelected(bool selected) override { m_selected = selected; }
@@ -42,7 +33,7 @@ public:
 
 private:
     std::function<std::string()> m_getLabel;
-    std::function<void()> m_onAccept;
+    std::function<void()> m_onClick;
     LabelFormatter m_labelFormatter;
     bool m_selected = false;
 };
