@@ -79,6 +79,11 @@ public:
     // construction completes or after destruction.
     [[nodiscard]] static App *getInstance() noexcept;
 
+    // Signals the main loop to stop after the current frame, the same way
+    // an OS-level quit event does — game code calls this instead of pushing
+    // SDL_EVENT_QUIT directly, so no game file needs <SDL3/SDL.h>.
+    static void requestQuit() noexcept;
+
     // Native OS error dialog. Safe to call even if no App instance exists yet
     // (e.g. from main()'s top-level catch block).
     static void showErrorDialog(const char *title, const char *message);

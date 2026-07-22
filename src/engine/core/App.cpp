@@ -182,6 +182,12 @@ App *App::getInstance() noexcept
     return s_app;
 }
 
+void App::requestQuit() noexcept
+{
+    if (s_app)
+        s_app->m_running = false;
+}
+
 // [x]: Native error dialog, no App instance required.
 void App::showErrorDialog(const char *title, const char *message)
 {
