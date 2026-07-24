@@ -124,6 +124,11 @@ public:
     // --- Construction ---
     Renderer() = default;
     explicit Renderer(SDL_Renderer *renderer);
+    ~Renderer();
+    Renderer(const Renderer &) = delete;
+    Renderer &operator=(const Renderer &) = delete;
+    Renderer(Renderer &&other) noexcept;
+    Renderer &operator=(Renderer &&other) noexcept;
 
     // --- Frame ---
     void clear(Color color);
@@ -136,6 +141,9 @@ public:
     };
 
     void setLogicalPresentation(int width, int height, PresentationMode mode);
+    void setLogicalScaleMode(ScaleMode mode);
+    void beginWorldPass();
+    void endWorldPass();
 
     // --- Render state ---
     void setDrawColor(Color color);
@@ -207,5 +215,20 @@ public:
     void drawDebugText(Vec2f pos, const std::string &text);
 
 private:
+    struct LetterboxTransform
+    {
+        float scale = 1.0f;
+        float offsetX = 0.0f;
+        float offsetY = 0.0f;
+    };
+    LetterboxTransform computeLetterboxTransform() const;
+    Rectf toNativeRect(Rectf logicalRect) const;
+    Vec2f toNativePos(Vec2f logicalPos) const;
+
     SDL_Renderer *m_renderer = nullptr;
+    struct SDL_Texture *m_logicalTarget = nullptr;
+    int m_logicalW = 0;
+    int m_logicalH = 0;
+    ScaleMode m_logicalScaleMode = ScaleMode::Nearest;
+    bool m_inWorldPass = false;
 };

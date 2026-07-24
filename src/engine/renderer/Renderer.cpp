@@ -6,6 +6,8 @@
 #include <SDL3_ttf/SDL_ttf.h>
 #include <SDL3_image/SDL_image.h>
 
+#include <algorithm>
+#include <memory>
 #include <cmath>
 
 namespace
@@ -49,6 +51,31 @@ namespace
         TTF_Font *m_font;
         int m_previousStyle;
     };
+
+    // Same RAII pattern as ScopedFontStyle, for TTF_SetFontSize instead of
+    // TTF_SetFontStyle — restores the font's original point size on scope
+    // exit so measureText() (which never bumps size) stays consistent.
+    class ScopedFontSize
+    {
+    public:
+        ScopedFontSize(TTF_Font *font, float newSize)
+            : m_font(font), m_previousSize(TTF_GetFontSize(font))
+        {
+            TTF_SetFontSize(m_font, newSize);
+        }
+
+        ~ScopedFontSize()
+        {
+            TTF_SetFontSize(m_font, m_previousSize);
+        }
+
+        ScopedFontSize(const ScopedFontSize &) = delete;
+        ScopedFontSize &operator=(const ScopedFontSize &) = delete;
+
+    private:
+        TTF_Font *m_font;
+        float m_previousSize;
+    };
 }
 
 // -----------------------------------------------------------------------------
@@ -82,16 +109,121 @@ void Renderer::present()
 // [x] setLogicalPresentation(): maps PresentationMode -> SDL_RendererLogicalPresentation.
 void Renderer::setLogicalPresentation(int width, int height, PresentationMode mode)
 {
-    SDL_RendererLogicalPresentation sdlMode = SDL_LOGICAL_PRESENTATION_LETTERBOX;
+    (void)mode; // manual compositing below replaces SDL's own logical-presentation scaling
+    m_logicalW = width;
+    m_logicalH = height;
 
-    switch (mode)
+    if (m_logicalTarget)
     {
-    case PresentationMode::Letterbox:
-        sdlMode = SDL_LOGICAL_PRESENTATION_LETTERBOX;
-        break;
+        SDL_DestroyTexture(m_logicalTarget);
+        m_logicalTarget = nullptr;
     }
 
-    SDL_SetRenderLogicalPresentation(m_renderer, width, height, sdlMode);
+    m_logicalTarget = SDL_CreateTexture(m_renderer, SDL_PIXELFORMAT_RGBA8888,
+                                        SDL_TEXTUREACCESS_TARGET, width, height);
+}
+
+void Renderer::setLogicalScaleMode(ScaleMode mode)
+{
+    m_logicalScaleMode = mode;
+}
+
+Renderer::LetterboxTransform Renderer::computeLetterboxTransform() const
+{
+    int outW = 0, outH = 0;
+    SDL_GetRenderOutputSize(m_renderer, &outW, &outH);
+    if (m_logicalW <= 0 || m_logicalH <= 0 || outW <= 0 || outH <= 0)
+        return LetterboxTransform{1.0f, 0.0f, 0.0f};
+
+    const float scaleX = static_cast<float>(outW) / static_cast<float>(m_logicalW);
+    const float scaleY = static_cast<float>(outH) / static_cast<float>(m_logicalH);
+    const float scale = std::min(scaleX, scaleY);
+
+    const float scaledW = static_cast<float>(m_logicalW) * scale;
+    const float scaledH = static_cast<float>(m_logicalH) * scale;
+
+    return LetterboxTransform{
+        scale,
+        (static_cast<float>(outW) - scaledW) * 0.5f,
+        (static_cast<float>(outH) - scaledH) * 0.5f,
+    };
+}
+
+Rectf Renderer::toNativeRect(Rectf r) const
+{
+    if (m_inWorldPass)
+        return r;
+    const LetterboxTransform t = computeLetterboxTransform();
+    return Rectf{r.x * t.scale + t.offsetX, r.y * t.scale + t.offsetY, r.w * t.scale, r.h * t.scale};
+}
+
+Vec2f Renderer::toNativePos(Vec2f p) const
+{
+    if (m_inWorldPass)
+        return p;
+    const LetterboxTransform t = computeLetterboxTransform();
+    return Vec2f{p.x * t.scale + t.offsetX, p.y * t.scale + t.offsetY};
+}
+
+void Renderer::beginWorldPass()
+{
+    if (!m_logicalTarget)
+        return;
+    SDL_SetRenderTarget(m_renderer, m_logicalTarget);
+    m_inWorldPass = true;
+    SDL_SetRenderDrawColor(m_renderer, 0, 0, 0, 0);
+    SDL_RenderClear(m_renderer);
+}
+
+void Renderer::endWorldPass()
+{
+    if (!m_logicalTarget)
+        return;
+    SDL_SetRenderTarget(m_renderer, nullptr);
+    m_inWorldPass = false;
+
+    SDL_SetTextureScaleMode(m_logicalTarget,
+                            m_logicalScaleMode == ScaleMode::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+
+    const LetterboxTransform t = computeLetterboxTransform();
+    SDL_FRect dst{t.offsetX, t.offsetY, static_cast<float>(m_logicalW) * t.scale, static_cast<float>(m_logicalH) * t.scale};
+    SDL_RenderTexture(m_renderer, m_logicalTarget, nullptr, &dst);
+}
+
+Renderer::~Renderer()
+{
+    if (m_logicalTarget)
+        SDL_DestroyTexture(m_logicalTarget);
+}
+
+Renderer::Renderer(Renderer &&other) noexcept
+    : m_renderer(other.m_renderer),
+      m_logicalTarget(other.m_logicalTarget),
+      m_logicalW(other.m_logicalW),
+      m_logicalH(other.m_logicalH),
+      m_logicalScaleMode(other.m_logicalScaleMode),
+      m_inWorldPass(other.m_inWorldPass)
+{
+    other.m_logicalTarget = nullptr;
+}
+
+Renderer &Renderer::operator=(Renderer &&other) noexcept
+{
+    if (this != &other)
+    {
+        if (m_logicalTarget)
+            SDL_DestroyTexture(m_logicalTarget);
+
+        m_renderer = other.m_renderer;
+        m_logicalTarget = other.m_logicalTarget;
+        m_logicalW = other.m_logicalW;
+        m_logicalH = other.m_logicalH;
+        m_logicalScaleMode = other.m_logicalScaleMode;
+        m_inWorldPass = other.m_inWorldPass;
+
+        other.m_logicalTarget = nullptr;
+    }
+    return *this;
 }
 
 // -----------------------------------------------------------------------------
@@ -132,24 +264,23 @@ Renderer::BlendMode Renderer::getBlendMode() const
 // Geometry / primitives
 // -----------------------------------------------------------------------------
 
-// [x] fillRect(): SDL_RenderFillRect.
 void Renderer::fillRect(Rectf rect)
 {
-    SDL_FRect r = toSDL(rect);
+    SDL_FRect r = toSDL(toNativeRect(rect));
     SDL_RenderFillRect(m_renderer, &r);
 }
 
-// [x] drawRect(): SDL_RenderRect (outline).
 void Renderer::drawRect(Rectf rect)
 {
-    SDL_FRect r = toSDL(rect);
+    SDL_FRect r = toSDL(toNativeRect(rect));
     SDL_RenderRect(m_renderer, &r);
 }
 
-// [x] drawLine(): SDL_RenderLine.
 void Renderer::drawLine(Vec2f a, Vec2f b)
 {
-    SDL_RenderLine(m_renderer, a.x, a.y, b.x, b.y);
+    const Vec2f na = toNativePos(a);
+    const Vec2f nb = toNativePos(b);
+    SDL_RenderLine(m_renderer, na.x, na.y, nb.x, nb.y);
 }
 
 // [x] drawGeometry(): convert engine Vertex (Vec2f + FColor) to SDL_Vertex,
@@ -270,6 +401,16 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
     ScopedFontStyle styleGuard(ttfFont, toTTFStyle(bold, italic, underline));
 
+    // Rasterize at native pixel resolution for sharpness when scaled up
+    // (e.g. after a resolution change) — the resulting texture is then
+    // drawn 1:1 in physical pixels, so only its POSITION needs the
+    // letterbox transform below, never its size.
+    const float previousSize = TTF_GetFontSize(ttfFont);
+    const LetterboxTransform t = m_inWorldPass ? LetterboxTransform{1.0f, 0.0f, 0.0f} : computeLetterboxTransform();
+    std::unique_ptr<ScopedFontSize> sizeGuard;
+    if (!m_inWorldPass && t.scale > 0.0f && t.scale != 1.0f)
+        sizeGuard = std::make_unique<ScopedFontSize>(ttfFont, previousSize * t.scale);
+
     SDL_Color sdlColor{color.r, color.g, color.b, color.a};
     SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
     if (!surface)
@@ -283,7 +424,8 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     float w = 0.f, h = 0.f;
     SDL_GetTextureSize(texture, &w, &h);
 
-    SDL_FRect dst{pos.x, pos.y, w, h};
+    const Vec2f nativePos = m_inWorldPass ? pos : toNativePos(pos);
+    SDL_FRect dst{nativePos.x, nativePos.y, w, h};
     SDL_RenderTexture(m_renderer, texture, nullptr, &dst);
     SDL_DestroyTexture(texture);
 }
@@ -392,26 +534,16 @@ void Renderer::drawTexture(const Texture *texture, Recti src, Rectf dst, bool fl
     auto *sdlTex = static_cast<SDL_Texture *>(texture->m_texture);
 
     SDL_FRect srcRect = toSDL(src);
-    SDL_FRect dstRect = toSDL(dst);
+    const Rectf nativeDst = m_inWorldPass ? dst : toNativeRect(dst);
+    SDL_FRect dstRect = toSDL(nativeDst);
 
     if (flipH)
     {
-        SDL_RenderTextureRotated(
-            m_renderer,
-            sdlTex,
-            &srcRect,
-            &dstRect,
-            0.0,
-            nullptr,
-            SDL_FLIP_HORIZONTAL);
+        SDL_RenderTextureRotated(m_renderer, sdlTex, &srcRect, &dstRect, 0.0, nullptr, SDL_FLIP_HORIZONTAL);
     }
     else
     {
-        SDL_RenderTexture(
-            m_renderer,
-            sdlTex,
-            &srcRect,
-            &dstRect);
+        SDL_RenderTexture(m_renderer, sdlTex, &srcRect, &dstRect);
     }
 }
 
