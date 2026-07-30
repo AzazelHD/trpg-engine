@@ -1,5 +1,6 @@
 #include "engine/ui/ButtonControl.h"
 
+#include "engine/renderer/Aligment.h"
 #include "engine/renderer/Font.h"
 #include "engine/renderer/Renderer.h"
 
@@ -16,7 +17,7 @@ void ButtonControl::render(Renderer *renderer, const Font *font, Rectf rect, flo
 
     renderer->renderTextInRect(font, formatted, rect,
                                m_selected ? selectedColor : normalColor,
-                               Renderer::HorizontalAlign::Center,
-                               Renderer::VerticalAlign::Middle,
+                               HorizontalAlign::Center,
+                               VerticalAlign::Middle,
                                false, false, false);
 }

@@ -1,5 +1,7 @@
+#include "engine/core/Log.h"
 #include "engine/renderer/Camera.h"
 #include "engine/math/MathUtils.h"
+
 #include <cmath>
 #include <algorithm>
 
@@ -185,7 +187,7 @@ void Camera::trackTarget(Vec2f target, Vec2f screenSize, float dt)
     if (dt <= 0.f)
         return;
 
-    float z = std::max(m_zoom, 0.0001f);
+    float z = std::max(m_zoom, 0.0001f) * m_renderScale;
 
     Vec2f desired{
         target.x - (screenSize.x * 0.5f) / z,
@@ -226,13 +228,57 @@ void Camera::rebuildBoundsCache()
 
 void Camera::clampToBounds()
 {
+
     if (!hasMapBounds())
         return;
 
-    const float mx = m_boundsMarginPixels / std::max(m_zoom, 0.0001f);
+    const float z = std::max(m_zoom, 0.0001f) * m_renderScale;
 
-    m_offset.x = std::clamp(m_offset.x, m_boundsMin.x - mx, m_boundsMax.x + mx);
-    m_offset.y = std::clamp(m_offset.y, m_boundsMin.y - mx, m_boundsMax.y + mx);
+    // Visible world size
+    const float viewW = m_viewportSize.x / z;
+    const float viewH = m_viewportSize.y / z;
+
+    // Bounding rectangle of the projected map.
+    const float mapLeft = m_boundsMin.x;
+    const float mapRight = m_boundsMax.x;
+    const float mapTop = m_boundsMin.y;
+    const float mapBottom = m_boundsMax.y;
+
+    const float mapW = mapRight - mapLeft;
+    const float mapH = mapBottom - mapTop;
+
+    // Horizontal
+    if (mapW <= viewW)
+    {
+        // Small map -> center it.
+        m_offset.x = mapLeft + (mapW - viewW) * 0.5f;
+    }
+    else
+    {
+        // Keep the map AABB inside the viewport.
+        const float minOffsetX = mapLeft;
+        const float maxOffsetX = mapRight - viewW;
+
+        m_offset.x = std::clamp(m_offset.x, minOffsetX, maxOffsetX);
+    }
+
+    // Vertical
+    if (mapH <= viewH)
+    {
+        m_offset.y = mapTop + (mapH - viewH) * 0.5f;
+    }
+    else
+    {
+        const float minOffsetY = mapTop;
+        const float maxOffsetY = mapBottom - viewH;
+
+        m_offset.y = std::clamp(m_offset.y, minOffsetY, maxOffsetY);
+    }
+
+    LOG_INFO("Camera",
+             "clamp AFTER offset=(%.1f %.1f)",
+             m_offset.x,
+             m_offset.y);
 }
 
 // =============================================================================

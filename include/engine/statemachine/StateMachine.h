@@ -140,9 +140,11 @@ private:
     {
         if (m_states.empty())
             return;
-        logTransition("POP ", m_states.top().get());
+        const char *poppedName = typeid(*m_states.top()).name();
         m_states.top()->onExit();
         m_states.pop();
+        LOG_INFO("StateMachine", "POP  -> %s", poppedName);
+        LOG_INFO("StateMachine", "TOP  -> %s", currentStateDebugName());
     }
 
     // Does NOT touch m_pendingOps — performs the pop+push directly.

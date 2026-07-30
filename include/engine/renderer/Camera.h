@@ -84,6 +84,8 @@ public:
     void zoomOut(float amount, Vec2f focalScreenPos);
 
     // Config
+    void setViewportSize(Vec2f screenSize) { m_viewportSize = screenSize; }
+    void setRenderScale(float scale) { m_renderScale = std::max(scale, 0.0001f); }
     void setTileSize(int tileW, int tileH);
 
     void setRotation(Rotation rotation);
@@ -100,7 +102,6 @@ public:
     Vec2f getOffset() const { return m_offset; }
     Rotation getRotation() const { return m_rotation; }
 
-    Vec2f getMapOrigin() const { return {m_mapBounds.x, m_mapBounds.y}; }
     Vec2f getMapSize() const { return {m_mapBounds.w, m_mapBounds.h}; }
 
     bool hasMapBounds() const { return m_mapBounds.w > 0.f && m_mapBounds.h > 0.f; }
@@ -118,6 +119,8 @@ private:
     int m_tileW = 64;
     int m_tileH = 32;
 
+    Vec2f m_viewportSize{0.f, 0.f};
+    float m_renderScale = 1.0f;
     Rotation m_rotation = Rotation::R0;
 
     // Follow

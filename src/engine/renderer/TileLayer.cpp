@@ -1,3 +1,4 @@
+#include "engine/core/Log.h"
 #include "engine/renderer/Camera.h"
 #include "engine/renderer/TileLayer.h"
 #include "engine/renderer/SpriteBatch.h"
@@ -103,6 +104,14 @@ void TileLayer::render(SpriteBatch &batch, const Camera &camera, Vec2f screenSiz
 
             // tileToScreen gives the top-left screen pixel of this tile's iso diamond.
             const Vec2f screenPos = camera.tileToScreen(Vec2i{x, y});
+
+            if (x == 0 && y == 0)
+            {
+                LOG_INFO("Tile",
+                         "tile00 screen=(%.1f %.1f)",
+                         screenPos.x,
+                         screenPos.y);
+            }
 
             const Rectf dst{
                 screenPos.x,

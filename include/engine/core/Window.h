@@ -1,5 +1,7 @@
 #pragma once
+
 #include "engine/renderer/Renderer.h"
+
 // Window wraps an SDL_Window + SDL_Renderer pair and owns the engine Renderer
 // built on top of that SDL_Renderer. The rest of the engine/game never touches
 // SDL_Window/SDL_Renderer directly - only Window and Renderer wrap them.
@@ -33,6 +35,12 @@ enum class VSyncMode : int
     Adaptive = -1,
 };
 
+struct DisplayResolution
+{
+    int width = 0;
+    int height = 0;
+};
+
 class Window
 {
 public:
@@ -57,6 +65,10 @@ public:
     // unsupported mode on the current driver).
     void setVSync(VSyncMode mode);
     [[nodiscard]] VSyncMode getVSync() const { return m_vsync; }
+    void show();
+    // Returns the current desktop mode of the primary display.
+    // (0,0) on failure.
+    static DisplayResolution GetPrimaryDesktopResolution();
 
 private:
     SDL_Window *m_window = nullptr;

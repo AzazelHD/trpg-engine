@@ -2,10 +2,11 @@
 
 #include "engine/math/Rect.h"
 #include "engine/math/Vec2.h"
-#include "engine/ui/IFocusable.h"
-#include "engine/ui/Insets.h"
 #include "engine/renderer/Color.h"
 #include "engine/renderer/Renderer.h"
+#include "engine/renderer/Aligment.h"
+#include "engine/ui/IFocusable.h"
+#include "engine/ui/Insets.h"
 
 #include <functional>
 #include <string>
@@ -29,7 +30,7 @@ public:
     void translate(Vec2f delta);
     [[nodiscard]] Rectf getRect() const;
 
-    void setTextAlignment(Renderer::HorizontalAlign hAlign, Renderer::VerticalAlign vAlign)
+    void setTextAlignment(HorizontalAlign hAlign, VerticalAlign vAlign)
     {
         m_textAlignH = hAlign;
         m_textAlignV = vAlign;
@@ -70,8 +71,8 @@ private:
 
     Padding m_padding = Padding::symmetric(16.0f, 8.0f);
 
-    Renderer::HorizontalAlign m_textAlignH = Renderer::HorizontalAlign::Center;
-    Renderer::VerticalAlign m_textAlignV = Renderer::VerticalAlign::Middle;
+    HorizontalAlign m_textAlignH = HorizontalAlign::Center;
+    VerticalAlign m_textAlignV = VerticalAlign::Middle;
 
     std::function<void()> m_onClick;
     static const Font *s_defaultFont;

@@ -110,7 +110,7 @@ namespace
 //         accessed via Input::instance() in processEvents() — App owns no
 //         Input pointer.
 App::App(const char *title, int width, int height, SceneFactory initialSceneFactory,
-         float fixedStepSeconds, FrameRatePreset frameRatePreset)
+         float fixedStepSeconds, FrameRatePreset frameRatePreset, WindowStartupConfig windowConfig)
     : m_fixedStep(fixedStepSeconds), m_frameRatePreset(frameRatePreset), m_targetFrameSeconds(targetFrameSecondsForPreset(frameRatePreset))
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
@@ -129,6 +129,13 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
     m_window = std::make_unique<Window>(title, width, height, vsyncModeForPreset(frameRatePreset));
     s_window = m_window.get();
     s_renderer = &m_window->getRenderer();
+
+    if (windowConfig.borderless)
+        m_window->setBorderlessWindowed(true);
+    else if (windowConfig.width > 0 && windowConfig.height > 0)
+        m_window->setSize(windowConfig.width, windowConfig.height);
+
+    m_window->show();
 
     // Establish the logical (design-resolution) canvas once, globally, so
     // every state's rendering scales/letterboxes correctly regardless of

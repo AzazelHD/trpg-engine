@@ -1,3 +1,4 @@
+#include "engine/renderer/Aligment.h"
 #include "engine/renderer/Font.h"
 #include "engine/renderer/Texture.h"
 #include "engine/renderer/Renderer.h"
@@ -109,7 +110,7 @@ void Renderer::present()
 // [x] setLogicalPresentation(): maps PresentationMode -> SDL_RendererLogicalPresentation.
 void Renderer::setLogicalPresentation(int width, int height, PresentationMode mode)
 {
-    (void)mode; // manual compositing below replaces SDL's own logical-presentation scaling
+    m_presentationMode = mode;
     m_logicalW = width;
     m_logicalH = height;
 
@@ -123,6 +124,11 @@ void Renderer::setLogicalPresentation(int width, int height, PresentationMode mo
                                         SDL_TEXTUREACCESS_TARGET, width, height);
 }
 
+void Renderer::setPresentationMode(PresentationMode mode)
+{
+    m_presentationMode = mode;
+}
+
 void Renderer::setLogicalScaleMode(ScaleMode mode)
 {
     m_logicalScaleMode = mode;
@@ -133,17 +139,21 @@ Renderer::LetterboxTransform Renderer::computeLetterboxTransform() const
     int outW = 0, outH = 0;
     SDL_GetRenderOutputSize(m_renderer, &outW, &outH);
     if (m_logicalW <= 0 || m_logicalH <= 0 || outW <= 0 || outH <= 0)
-        return LetterboxTransform{1.0f, 0.0f, 0.0f};
+        return LetterboxTransform{1.0f, 1.0f, 0.0f, 0.0f};
 
     const float scaleX = static_cast<float>(outW) / static_cast<float>(m_logicalW);
     const float scaleY = static_cast<float>(outH) / static_cast<float>(m_logicalH);
-    const float scale = std::min(scaleX, scaleY);
 
-    const float scaledW = static_cast<float>(m_logicalW) * scale;
-    const float scaledH = static_cast<float>(m_logicalH) * scale;
+    if (m_presentationMode == PresentationMode::Stretch)
+        return LetterboxTransform{scaleX, scaleY, 0.0f, 0.0f};
+
+    const float uniformScale = std::min(scaleX, scaleY);
+    const float scaledW = static_cast<float>(m_logicalW) * uniformScale;
+    const float scaledH = static_cast<float>(m_logicalH) * uniformScale;
 
     return LetterboxTransform{
-        scale,
+        uniformScale,
+        uniformScale,
         (static_cast<float>(outW) - scaledW) * 0.5f,
         (static_cast<float>(outH) - scaledH) * 0.5f,
     };
@@ -154,7 +164,7 @@ Rectf Renderer::toNativeRect(Rectf r) const
     if (m_inWorldPass)
         return r;
     const LetterboxTransform t = computeLetterboxTransform();
-    return Rectf{r.x * t.scale + t.offsetX, r.y * t.scale + t.offsetY, r.w * t.scale, r.h * t.scale};
+    return Rectf{r.x * t.scaleX + t.offsetX, r.y * t.scaleY + t.offsetY, r.w * t.scaleX, r.h * t.scaleY};
 }
 
 Vec2f Renderer::toNativePos(Vec2f p) const
@@ -162,7 +172,7 @@ Vec2f Renderer::toNativePos(Vec2f p) const
     if (m_inWorldPass)
         return p;
     const LetterboxTransform t = computeLetterboxTransform();
-    return Vec2f{p.x * t.scale + t.offsetX, p.y * t.scale + t.offsetY};
+    return Vec2f{p.x * t.scaleX + t.offsetX, p.y * t.scaleY + t.offsetY};
 }
 
 void Renderer::beginWorldPass()
@@ -186,7 +196,7 @@ void Renderer::endWorldPass()
                             m_logicalScaleMode == ScaleMode::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
 
     const LetterboxTransform t = computeLetterboxTransform();
-    SDL_FRect dst{t.offsetX, t.offsetY, static_cast<float>(m_logicalW) * t.scale, static_cast<float>(m_logicalH) * t.scale};
+    SDL_FRect dst{t.offsetX, t.offsetY, static_cast<float>(m_logicalW) * t.scaleX, static_cast<float>(m_logicalH) * t.scaleY};
     SDL_RenderTexture(m_renderer, m_logicalTarget, nullptr, &dst);
 }
 
@@ -292,9 +302,8 @@ void Renderer::drawGeometry(const std::vector<Vertex> &vertices,
 
     for (size_t i = 0; i < vertices.size(); ++i)
     {
-        sdlVerts[i].position = {
-            vertices[i].position.x,
-            vertices[i].position.y};
+        const Vec2f nativePos = m_inWorldPass ? vertices[i].position : toNativePos(vertices[i].position);
+        sdlVerts[i].position = {nativePos.x, nativePos.y};
 
         sdlVerts[i].color = {
             vertices[i].color.r,
@@ -305,13 +314,7 @@ void Renderer::drawGeometry(const std::vector<Vertex> &vertices,
         sdlVerts[i].tex_coord = {0.0f, 0.0f};
     }
 
-    SDL_RenderGeometry(
-        m_renderer,
-        nullptr,
-        sdlVerts.data(),
-        (int)sdlVerts.size(),
-        indices.data(),
-        (int)indices.size());
+    SDL_RenderGeometry(m_renderer, nullptr, sdlVerts.data(), (int)sdlVerts.size(), indices.data(), (int)indices.size());
 }
 
 // -----------------------------------------------------------------------------
@@ -406,10 +409,12 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     // drawn 1:1 in physical pixels, so only its POSITION needs the
     // letterbox transform below, never its size.
     const float previousSize = TTF_GetFontSize(ttfFont);
-    const LetterboxTransform t = m_inWorldPass ? LetterboxTransform{1.0f, 0.0f, 0.0f} : computeLetterboxTransform();
+    const LetterboxTransform t = m_inWorldPass ? LetterboxTransform{1.0f, 1.0f, 0.0f, 0.0f} : computeLetterboxTransform();
+    // font size must stay uniform even under stretch, to avoid squashed/stretched glyphs
+    const float uniformScale = std::min(t.scaleX, t.scaleY);
     std::unique_ptr<ScopedFontSize> sizeGuard;
-    if (!m_inWorldPass && t.scale > 0.0f && t.scale != 1.0f)
-        sizeGuard = std::make_unique<ScopedFontSize>(ttfFont, previousSize * t.scale);
+    if (!m_inWorldPass && uniformScale > 0.0f && uniformScale != 1.0f)
+        sizeGuard = std::make_unique<ScopedFontSize>(ttfFont, previousSize * uniformScale);
 
     SDL_Color sdlColor{color.r, color.g, color.b, color.a};
     SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
@@ -470,7 +475,7 @@ bool Renderer::setFontWrapAlignment(const Font *font, HorizontalAlign align) con
     return true;
 }
 
-Renderer::HorizontalAlign Renderer::getFontWrapAlignment(const Font *font) const
+HorizontalAlign Renderer::getFontWrapAlignment(const Font *font) const
 {
     if (!font || !font->m_font)
         return HorizontalAlign::Left;

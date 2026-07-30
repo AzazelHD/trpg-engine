@@ -1,10 +1,13 @@
 #pragma once
-#include <string>
-#include <vector>
-#include "engine/renderer/Font.h"
-#include "engine/renderer/Color.h"
+
 #include "engine/math/Vec2.h"
 #include "engine/math/Rect.h"
+#include "engine/renderer/Aligment.h"
+#include "engine/renderer/Font.h"
+#include "engine/renderer/Color.h"
+
+#include <string>
+#include <vector>
 
 class Font;
 class Texture;
@@ -89,20 +92,6 @@ struct SDL_Renderer;
 class Renderer
 {
 public:
-    enum class HorizontalAlign
-    {
-        Left,
-        Center,
-        Right
-    };
-
-    enum class VerticalAlign
-    {
-        Top,
-        Middle,
-        Bottom
-    };
-
     enum class BlendMode
     {
         None,
@@ -137,9 +126,11 @@ public:
     // --- Configuration ---
     enum class PresentationMode
     {
-        Letterbox
+        Letterbox,
+        Stretch,
     };
 
+    void setPresentationMode(PresentationMode mode);
     void setLogicalPresentation(int width, int height, PresentationMode mode);
     void setLogicalScaleMode(ScaleMode mode);
     void beginWorldPass();
@@ -217,10 +208,12 @@ public:
 private:
     struct LetterboxTransform
     {
-        float scale = 1.0f;
+        float scaleX = 1.0f;
+        float scaleY = 1.0f;
         float offsetX = 0.0f;
         float offsetY = 0.0f;
     };
+    PresentationMode m_presentationMode = PresentationMode::Letterbox;
     LetterboxTransform computeLetterboxTransform() const;
     Rectf toNativeRect(Rectf logicalRect) const;
     Vec2f toNativePos(Vec2f logicalPos) const;

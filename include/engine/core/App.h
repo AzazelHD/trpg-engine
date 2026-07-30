@@ -33,6 +33,16 @@ class Font;
 template <typename T>
 class StateMachine;
 
+// Initial window state, decided by the game before App is constructed —
+// keeps App/Window ignorant of where these values came from (settings
+// file, CLI args, whatever). Engine has no knowledge of SettingsManager.
+struct WindowStartupConfig
+{
+    bool borderless = false;
+    int width = 0;
+    int height = 0;
+};
+
 // User-facing render frame-rate presets.
 // Fps30/Fps60/Fps120 use a manual frame limiter in App::run() and disable
 // Window vsync, giving an exact, monitor-independent cap (mixing a manual
@@ -57,7 +67,8 @@ public:
     using SceneFactory = std::function<std::unique_ptr<Scene>()>;
     App(const char *title, int width, int height, SceneFactory initialSceneFactory = {},
         float fixedStepSeconds = kDefaultFixedStepSeconds,
-        FrameRatePreset frameRatePreset = kDefaultFrameRatePreset);
+        FrameRatePreset frameRatePreset = kDefaultFrameRatePreset,
+        WindowStartupConfig windowConfig = {});
     ~App();
     void run();
 

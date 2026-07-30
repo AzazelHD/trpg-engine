@@ -1,8 +1,8 @@
 // SliderControl.cpp
-#include "engine/ui/SliderControl.h"
-
+#include "engine/renderer/Aligment.h"
 #include "engine/renderer/Font.h"
 #include "engine/renderer/Renderer.h"
+#include "engine/ui/SliderControl.h"
 
 #include <cstdio>
 
@@ -39,8 +39,8 @@ void SliderControl::render(Renderer *renderer, const Font *font, Rectf rect, flo
 
     renderer->renderTextInRect(font, pct, pctRect,
                                m_selected ? selectedColor : normalColor,
-                               Renderer::HorizontalAlign::Left,
-                               Renderer::VerticalAlign::Middle,
+                               HorizontalAlign::Left,
+                               VerticalAlign::Middle,
                                false, false, false);
 }
 

@@ -1,4 +1,5 @@
 #include "engine/core/Window.h"
+
 #include <SDL3/SDL.h>
 #include <string>
 #include <stdexcept>
@@ -9,7 +10,7 @@
 Window::Window(const char *title, int w, int h, VSyncMode vsync)
     : m_width(w), m_height(h), m_vsync(vsync)
 {
-    m_window = SDL_CreateWindow(title, w, h, SDL_WINDOW_RESIZABLE);
+    m_window = SDL_CreateWindow(title, w, h, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
     if (!m_window)
     {
         throw std::runtime_error(std::string("SDL_CreateWindow failed: ") + SDL_GetError());
@@ -179,4 +180,23 @@ void Window::setVSync(VSyncMode mode)
         }
     }
     m_vsync = mode;
+}
+
+void Window::show()
+{
+    if (m_window)
+        SDL_ShowWindow(m_window);
+}
+
+DisplayResolution Window::GetPrimaryDesktopResolution()
+{
+    SDL_DisplayID display = SDL_GetPrimaryDisplay();
+    if (display == 0)
+        return {};
+
+    const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(display);
+    if (!mode || mode->w <= 0 || mode->h <= 0)
+        return {};
+
+    return {mode->w, mode->h};
 }

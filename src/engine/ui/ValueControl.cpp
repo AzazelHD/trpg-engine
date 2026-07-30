@@ -1,8 +1,9 @@
 // ValueControl.cpp
-#include "engine/ui/ValueControl.h"
-
+#include "engine/core/Log.h"
+#include "engine/renderer/Aligment.h"
 #include "engine/renderer/Font.h"
 #include "engine/renderer/Renderer.h"
+#include "engine/ui/ValueControl.h"
 
 float ValueControl::measureWidth(Renderer *renderer, const Font *font, float /*ui*/) const
 {
@@ -19,8 +20,8 @@ void ValueControl::render(Renderer *renderer, const Font *font, Rectf rect, floa
 
     renderer->renderTextInRect(font, m_getValue(), rect,
                                m_selected ? selectedColor : normalColor,
-                               Renderer::HorizontalAlign::Right,
-                               Renderer::VerticalAlign::Middle,
+                               HorizontalAlign::Right,
+                               VerticalAlign::Middle,
                                false, false, false);
 }
 
@@ -28,6 +29,7 @@ bool ValueControl::handleLeft()
 {
     if (!m_onAdjust)
         return false;
+    LOG_INFO("Settings", "ValueControl::handleLeft fired");
     m_onAdjust(false);
     return true;
 }
@@ -36,6 +38,7 @@ bool ValueControl::handleRight()
 {
     if (!m_onAdjust)
         return false;
+    LOG_INFO("Settings", "ValueControl::handleRight fired");
     m_onAdjust(true);
     return true;
 }
