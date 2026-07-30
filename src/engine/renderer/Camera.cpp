@@ -274,11 +274,6 @@ void Camera::clampToBounds()
 
         m_offset.y = std::clamp(m_offset.y, minOffsetY, maxOffsetY);
     }
-
-    LOG_INFO("Camera",
-             "clamp AFTER offset=(%.1f %.1f)",
-             m_offset.x,
-             m_offset.y);
 }
 
 // =============================================================================
