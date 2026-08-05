@@ -1,7 +1,10 @@
 #pragma once
+
 #include "engine/core/Timer.h"
+
 #include <functional>
 #include <memory>
+
 // App is the top-level owner of the engine.
 // It initialises SDL, creates the Window (which owns the engine::Renderer),
 // owns the main loop, and shuts everything down cleanly.
@@ -65,10 +68,17 @@ public:
     static constexpr FrameRatePreset kDefaultFrameRatePreset = FrameRatePreset::Fps60;
 
     using SceneFactory = std::function<std::unique_ptr<Scene>()>;
+
+    // Invoked after SDL_Init succeeds but before the Window is created, so
+    // it's safe for game code to query things that need SDL video ready
+    // (e.g. native monitor resolution) without the engine exposing SDL or
+    // knowing where the returned config came from (settings file, CLI, etc).
+    using WindowConfigFactory = std::function<WindowStartupConfig()>;
+
     App(const char *title, int width, int height, SceneFactory initialSceneFactory = {},
         float fixedStepSeconds = kDefaultFixedStepSeconds,
         FrameRatePreset frameRatePreset = kDefaultFrameRatePreset,
-        WindowStartupConfig windowConfig = {});
+        WindowConfigFactory windowConfigFactory = {});
     ~App();
     void run();
 

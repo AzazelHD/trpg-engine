@@ -1,8 +1,10 @@
 #pragma once
+
+#include "engine/math/Vec2.h"
+
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
-#include "engine/math/Vec2.h"
 
 // Free utility functions for math used throughout the engine and game.
 // All functions are inline — bodies live right here, no .cpp needed.
@@ -72,6 +74,15 @@ inline int manhattanDistance(Vec2i a, Vec2i b)
 //       y = (tile.x + tile.y) * (tileH / 2)
 
 inline Vec2f tileToIso(Vec2i tile, int tileW, int tileH)
+{
+    const float halfTileW = tileW * 0.5f;
+    const float halfTileH = tileH * 0.5f;
+    const float x = (tile.x - tile.y) * halfTileW;
+    const float y = (tile.x + tile.y) * halfTileH;
+    return Vec2f{x, y};
+}
+
+inline Vec2f tileToIso(Vec2f tile, int tileW, int tileH)
 {
     const float halfTileW = tileW * 0.5f;
     const float halfTileH = tileH * 0.5f;

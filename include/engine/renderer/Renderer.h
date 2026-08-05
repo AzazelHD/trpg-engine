@@ -39,8 +39,9 @@ struct SDL_Renderer;
 // -----------------------------------------------------------------------------
 //
 // [x] setLogicalPresentation(width, height, mode) - SDL_SetRenderLogicalPresentation.
-//       PresentationMode{Letterbox} covers current usage; extend if a state needs
-//       Stretch/Overscan/IntegerScale later.
+//       PresentationMode{Letterbox} is the only mode now — always preserves
+//       aspect ratio, no distortion. Extend if a state needs Overscan/
+//       IntegerScale later.
 //
 // -----------------------------------------------------------------------------
 // Render state
@@ -127,14 +128,18 @@ public:
     enum class PresentationMode
     {
         Letterbox,
-        Stretch,
     };
 
     void setPresentationMode(PresentationMode mode);
     void setLogicalPresentation(int width, int height, PresentationMode mode);
     void setLogicalScaleMode(ScaleMode mode);
-    void beginWorldPass();
-    void endWorldPass();
+
+    // Color drawn in the pillarbox/letterbox bars (the area outside the
+    // logical game rect on ultrawide/non-16:9 displays). Solid color for
+    // now — see endLogicalPass() for notes on gradient/blur/art alternatives.
+    void setLetterboxColor(Color color);
+    void beginLogicalPass();
+    void endLogicalPass();
 
     // --- Render state ---
     void setDrawColor(Color color);
@@ -214,6 +219,7 @@ private:
         float offsetY = 0.0f;
     };
     PresentationMode m_presentationMode = PresentationMode::Letterbox;
+    Color m_letterboxColor{0, 0, 0, 255};
     LetterboxTransform computeLetterboxTransform() const;
     Rectf toNativeRect(Rectf logicalRect) const;
     Vec2f toNativePos(Vec2f logicalPos) const;

@@ -110,7 +110,7 @@ namespace
 //         accessed via Input::instance() in processEvents() — App owns no
 //         Input pointer.
 App::App(const char *title, int width, int height, SceneFactory initialSceneFactory,
-         float fixedStepSeconds, FrameRatePreset frameRatePreset, WindowStartupConfig windowConfig)
+         float fixedStepSeconds, FrameRatePreset frameRatePreset, WindowConfigFactory windowConfigFactory)
     : m_fixedStep(fixedStepSeconds), m_frameRatePreset(frameRatePreset), m_targetFrameSeconds(targetFrameSecondsForPreset(frameRatePreset))
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
@@ -126,14 +126,20 @@ App::App(const char *title, int width, int height, SceneFactory initialSceneFact
             std::string("TTF_Init failed: ") + SDL_GetError());
     }
 
-    m_window = std::make_unique<Window>(title, width, height, vsyncModeForPreset(frameRatePreset));
+    // SDL video is guaranteed live at this point, so it's now safe for game
+    // code to query desktop/display info (e.g. native monitor resolution
+    // via SettingsManager) when building its startup config.
+    const WindowStartupConfig windowConfig = windowConfigFactory ? windowConfigFactory() : WindowStartupConfig{};
+
+    const int startWidth = windowConfig.width > 0 ? windowConfig.width : width;
+    const int startHeight = windowConfig.height > 0 ? windowConfig.height : height;
+
+    m_window = std::make_unique<Window>(title, startWidth, startHeight, vsyncModeForPreset(frameRatePreset));
     s_window = m_window.get();
     s_renderer = &m_window->getRenderer();
 
     if (windowConfig.borderless)
-        m_window->setBorderlessWindowed(true);
-    else if (windowConfig.width > 0 && windowConfig.height > 0)
-        m_window->setSize(windowConfig.width, windowConfig.height);
+        m_window->setBorderless(true);
 
     m_window->show();
 

@@ -148,26 +148,6 @@ void Window::setBorderless(bool enabled)
         SDL_SetWindowBordered(m_window, !enabled);
 }
 
-void Window::setBorderlessWindowed(bool enabled)
-{
-    if (!m_window)
-        return;
-
-    SDL_SetWindowFullscreen(m_window, false);
-    SDL_SetWindowBordered(m_window, !enabled);
-
-    if (!enabled)
-        return;
-
-    SDL_DisplayID displayId = SDL_GetDisplayForWindow(m_window);
-    SDL_Rect usable{};
-    if (SDL_GetDisplayUsableBounds(displayId, &usable))
-    {
-        SDL_SetWindowPosition(m_window, usable.x, usable.y);
-        SDL_SetWindowSize(m_window, usable.w, usable.h);
-    }
-}
-
 // [x] setVSync(): runtime toggle, kept in sync with m_vsync so getVSync()
 //     reflects the renderer's actual state.
 void Window::setVSync(VSyncMode mode)

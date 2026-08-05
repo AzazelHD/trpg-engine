@@ -134,6 +134,11 @@ void Renderer::setLogicalScaleMode(ScaleMode mode)
     m_logicalScaleMode = mode;
 }
 
+void Renderer::setLetterboxColor(Color color)
+{
+    m_letterboxColor = color;
+}
+
 Renderer::LetterboxTransform Renderer::computeLetterboxTransform() const
 {
     int outW = 0, outH = 0;
@@ -143,9 +148,6 @@ Renderer::LetterboxTransform Renderer::computeLetterboxTransform() const
 
     const float scaleX = static_cast<float>(outW) / static_cast<float>(m_logicalW);
     const float scaleY = static_cast<float>(outH) / static_cast<float>(m_logicalH);
-
-    if (m_presentationMode == PresentationMode::Stretch)
-        return LetterboxTransform{scaleX, scaleY, 0.0f, 0.0f};
 
     const float uniformScale = std::min(scaleX, scaleY);
     const float scaledW = static_cast<float>(m_logicalW) * uniformScale;
@@ -175,7 +177,7 @@ Vec2f Renderer::toNativePos(Vec2f p) const
     return Vec2f{p.x * t.scaleX + t.offsetX, p.y * t.scaleY + t.offsetY};
 }
 
-void Renderer::beginWorldPass()
+void Renderer::beginLogicalPass()
 {
     if (!m_logicalTarget)
         return;
@@ -185,7 +187,7 @@ void Renderer::beginWorldPass()
     SDL_RenderClear(m_renderer);
 }
 
-void Renderer::endWorldPass()
+void Renderer::endLogicalPass()
 {
     if (!m_logicalTarget)
         return;
@@ -194,6 +196,26 @@ void Renderer::endWorldPass()
 
     SDL_SetTextureScaleMode(m_logicalTarget,
                             m_logicalScaleMode == ScaleMode::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+
+    // Paint the full native output first, so on non-16:9 displays (e.g.
+    // ultrawide) the area outside the letterboxed game rect ends up in
+    // m_letterboxColor rather than whatever a prior clear() call left behind.
+    // This makes the bars independent of call order elsewhere in the frame.
+    //
+    // Currently solid color only. To extend later:
+    //   - Gradient: replace this SDL_RenderClear with a drawGeometry() call
+    //     using a vertical strip of Vertices whose FColor varies top-to-bottom
+    //     (or left-right for the side bars specifically), instead of a flat fill.
+    //   - Blurred game content: capture/downsample m_logicalTarget's edge
+    //     columns/rows into a small texture once per frame (or every N frames
+    //     for perf), then drawTexture() it stretched to cover the full native
+    //     rect *before* the sharp blit below — cheap "extended ambient" look
+    //     without a real blur shader.
+    //   - Static art: drawTexture() a fixed background texture stretched to
+    //     the full native output rect here, before the sharp game blit below.
+    //     Swap m_letterboxColor for a Texture* member in that case.
+    SDL_SetRenderDrawColor(m_renderer, m_letterboxColor.r, m_letterboxColor.g, m_letterboxColor.b, m_letterboxColor.a);
+    SDL_RenderClear(m_renderer);
 
     const LetterboxTransform t = computeLetterboxTransform();
     SDL_FRect dst{t.offsetX, t.offsetY, static_cast<float>(m_logicalW) * t.scaleX, static_cast<float>(m_logicalH) * t.scaleY};
@@ -410,7 +432,7 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     // letterbox transform below, never its size.
     const float previousSize = TTF_GetFontSize(ttfFont);
     const LetterboxTransform t = m_inWorldPass ? LetterboxTransform{1.0f, 1.0f, 0.0f, 0.0f} : computeLetterboxTransform();
-    // font size must stay uniform even under stretch, to avoid squashed/stretched glyphs
+    // font size must stay uniform to avoid squashed/stretched glyphs
     const float uniformScale = std::min(t.scaleX, t.scaleY);
     std::unique_ptr<ScopedFontSize> sizeGuard;
     if (!m_inWorldPass && uniformScale > 0.0f && uniformScale != 1.0f)

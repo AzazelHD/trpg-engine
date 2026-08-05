@@ -27,7 +27,7 @@ struct SDL_Renderer;
 
 // Mirrors SDL_SetRenderVSync's int semantics directly, so the value can be
 // passed straight through without a translation table:
-//   Disabled = 0, Enabled = 1 (every refresh), Adaptive = -1 (SDL_RENDERER_VSYNC_ADAPTIVE).
+// Disabled = 0, Enabled = 1 (every refresh), Adaptive = -1 (SDL_RENDERER_VSYNC_ADAPTIVE).
 enum class VSyncMode : int
 {
     Disabled = 0,
@@ -60,7 +60,6 @@ public:
     void setSize(int width, int height);
     void maximize();
     void setBorderless(bool enabled);
-    void setBorderlessWindowed(bool enabled);
     // Changes vsync on the live SDL_Renderer. Throws on failure (e.g. an
     // unsupported mode on the current driver).
     void setVSync(VSyncMode mode);
