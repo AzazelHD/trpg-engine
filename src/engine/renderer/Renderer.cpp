@@ -371,6 +371,10 @@ Texture *Renderer::loadTexture(const char *filePath)
     if (!sdlTexture)
         return nullptr;
 
+    // Enable alpha blending up front (SDL textures default to
+    // SDL_BLENDMODE_NONE), so per-pixel alpha and setTextureAlphaMod() work.
+    SDL_SetTextureBlendMode(sdlTexture, SDL_BLENDMODE_BLEND);
+
     auto *texture = new Texture();
     texture->m_texture = sdlTexture;
 
@@ -423,6 +427,10 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     if (!font || !font->m_font || text.empty())
         return;
 
+    // Nothing would be visible — skip rasterizing a texture drawn at alpha 0.
+    if (color.a == 0)
+        return;
+
     TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
     ScopedFontStyle styleGuard(ttfFont, toTTFStyle(bold, italic, underline));
 
@@ -438,7 +446,7 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     if (!m_inWorldPass && uniformScale > 0.0f && uniformScale != 1.0f)
         sizeGuard = std::make_unique<ScopedFontSize>(ttfFont, previousSize * uniformScale);
 
-    SDL_Color sdlColor{color.r, color.g, color.b, color.a};
+    SDL_Color sdlColor{color.r, color.g, color.b, 255};
     SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
     if (!surface)
         return;
@@ -447,6 +455,19 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     SDL_DestroySurface(surface);
     if (!texture)
         return;
+
+    // Same as loadTexture(): without SDL_BLENDMODE_BLEND the per-pixel alpha
+    // baked in by TTF_RenderText_Blended is ignored and text renders fully
+    // opaque.
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+
+    // TTF_RenderText_Blended ignores fg.a entirely — glyph alpha comes only
+    // from anti-aliasing coverage, never from the requested color's alpha
+    // (known, never-fixed SDL_ttf behavior; libsdl-org/SDL_ttf#70). So a fade
+    // passed via color.a silently rendered fully-opaque until the caller
+    // stopped drawing: a hard "flicker once" at erase. Apply the shade as a
+    // texture alpha mod (0-255), which SDL does honor.
+    SDL_SetTextureAlphaMod(texture, color.a);
 
     float w = 0.f, h = 0.f;
     SDL_GetTextureSize(texture, &w, &h);

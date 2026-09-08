@@ -57,7 +57,16 @@ public:
     Camera() = default;
 
     // Projection
+    // The full transform is screen = (tileToIso(tile) - offset) * zoom * renderScale,
+    // matching the scale used by clampToBounds()/trackTarget(). The screen space
+    // of an enemy map (bounds/margins) and of all tile->screen lookups is
+    // therefore identical.
     Vec2f tileToScreen(Vec2i tilePos) const;
+
+    // Interpolated/fractional tile position (e.g. movement animation between
+    // two tiles). The projection is linear, so the Vec2i overload extends
+    // directly; no rotation is applied to fractional input.
+    Vec2f tileToScreen(Vec2f tilePos) const;
     Vec2i screenToTile(Vec2f screenPos) const;
     Recti isoSpaceRectToScreen(Rectf isoRect) const;
 
@@ -99,6 +108,7 @@ public:
 
     // Access
     float getZoom() const { return m_zoom; }
+    float getRenderScale() const { return m_renderScale; }
     Vec2f getOffset() const { return m_offset; }
     Rotation getRotation() const { return m_rotation; }
 

@@ -40,7 +40,7 @@ void DebugRenderer::clear()
 #endif
 }
 
-void DebugRenderer::addScreenLine(Vec2f start, Vec2f end, const Color &color)
+void DebugRenderer::addScreenLine([[maybe_unused]] Vec2f start, [[maybe_unused]] Vec2f end, [[maybe_unused]] const Color &color)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -50,7 +50,7 @@ void DebugRenderer::addScreenLine(Vec2f start, Vec2f end, const Color &color)
 #endif
 }
 
-void DebugRenderer::addScreenRect(Rectf rect, const Color &color, bool filled)
+void DebugRenderer::addScreenRect([[maybe_unused]] Rectf rect, [[maybe_unused]] const Color &color, [[maybe_unused]] bool filled)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -63,7 +63,7 @@ void DebugRenderer::addScreenRect(Rectf rect, const Color &color, bool filled)
 #endif
 }
 
-void DebugRenderer::addScreenCircle(Vec2f center, float radius, const Color &color, bool filled)
+void DebugRenderer::addScreenCircle([[maybe_unused]] Vec2f center, [[maybe_unused]] float radius, [[maybe_unused]] const Color &color, [[maybe_unused]] bool filled)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -103,7 +103,7 @@ void DebugRenderer::addScreenCircle(Vec2f center, float radius, const Color &col
 #endif
 }
 
-void DebugRenderer::addIsoLine(Vec2f start, Vec2f end, const Color &color)
+void DebugRenderer::addIsoLine([[maybe_unused]] Vec2f start, [[maybe_unused]] Vec2f end, [[maybe_unused]] const Color &color)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -113,7 +113,7 @@ void DebugRenderer::addIsoLine(Vec2f start, Vec2f end, const Color &color)
 #endif
 }
 
-void DebugRenderer::addIsoRect(Rectf rect, const Color &color, bool filled)
+void DebugRenderer::addIsoRect([[maybe_unused]] Rectf rect, [[maybe_unused]] const Color &color, [[maybe_unused]] bool filled)
 {
 #ifndef NDEBUG
     if (!m_enabled)
@@ -126,7 +126,7 @@ void DebugRenderer::addIsoRect(Rectf rect, const Color &color, bool filled)
 #endif
 }
 
-void DebugRenderer::flush(Renderer *renderer, const Camera &camera)
+void DebugRenderer::flush([[maybe_unused]] Renderer *renderer, [[maybe_unused]] const Camera &camera)
 {
 #ifndef NDEBUG
     if (!renderer || !m_enabled)

@@ -118,14 +118,25 @@ Vec2f Camera::tileToScreen(Vec2i tilePos) const
 {
     Vec2f iso = tileToIso(rotateTile(tilePos), m_tileW, m_tileH);
 
+    const float z = m_zoom * m_renderScale;
     return {
-        (iso.x - m_offset.x) * m_zoom,
-        (iso.y - m_offset.y) * m_zoom};
+        (iso.x - m_offset.x) * z,
+        (iso.y - m_offset.y) * z};
+}
+
+Vec2f Camera::tileToScreen(Vec2f tilePos) const
+{
+    Vec2f iso = tileToIso(tilePos, m_tileW, m_tileH);
+
+    const float z = m_zoom * m_renderScale;
+    return {
+        (iso.x - m_offset.x) * z,
+        (iso.y - m_offset.y) * z};
 }
 
 Vec2i Camera::screenToTile(Vec2f screenPos) const
 {
-    float invZoom = safeInv(m_zoom);
+    float invZoom = safeInv(m_zoom * m_renderScale);
 
     Vec2f iso{
         screenPos.x * invZoom + m_offset.x,
@@ -136,11 +147,12 @@ Vec2i Camera::screenToTile(Vec2f screenPos) const
 
 Recti Camera::isoSpaceRectToScreen(Rectf r) const
 {
+    const float z = m_zoom * m_renderScale;
     return {
-        (int)std::round((r.x - m_offset.x) * m_zoom),
-        (int)std::round((r.y - m_offset.y) * m_zoom),
-        (int)std::round(r.w * m_zoom),
-        (int)std::round(r.h * m_zoom)};
+        (int)std::round((r.x - m_offset.x) * z),
+        (int)std::round((r.y - m_offset.y) * z),
+        (int)std::round(r.w * z),
+        (int)std::round(r.h * z)};
 }
 
 // =============================================================================
@@ -285,16 +297,18 @@ void Camera::setZoom(float zoom, Vec2f focalScreenPos)
     zoom = std::clamp(zoom, 0.25f, 4.0f);
 
     const float oldZoom = std::max(m_zoom, 0.001f);
+    const float zOld = oldZoom * m_renderScale;
+    const float zNew = zoom * m_renderScale;
 
     Vec2f focalIso{
-        focalScreenPos.x / oldZoom + m_offset.x,
-        focalScreenPos.y / oldZoom + m_offset.y};
+        focalScreenPos.x / zOld + m_offset.x,
+        focalScreenPos.y / zOld + m_offset.y};
 
     m_zoom = zoom;
 
     m_offset = {
-        focalIso.x - focalScreenPos.x / m_zoom,
-        focalIso.y - focalScreenPos.y / m_zoom};
+        focalIso.x - focalScreenPos.x / zNew,
+        focalIso.y - focalScreenPos.y / zNew};
 }
 
 void Camera::zoomIn(float amount, Vec2f focalScreenPos)

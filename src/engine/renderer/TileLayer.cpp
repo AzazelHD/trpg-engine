@@ -59,10 +59,11 @@ void TileLayer::render(SpriteBatch &batch, const Camera &camera, Vec2f screenSiz
     if (textureWidth <= 0 || textureHeight <= 0)
         return;
 
-    // Tile dimensions scaled by current zoom — dst rects must match screen space.
-    const float zoom = camera.getZoom();
-    const int dstW = static_cast<int>(m_tileW * zoom);
-    const int dstH = static_cast<int>(m_tileH * zoom);
+    // Tile dimensions scaled by current zoom and render scale — dst rects
+    // must match the screen space produced by camera.tileToScreen().
+    const float z = camera.getZoom() * camera.getRenderScale();
+    const int dstW = static_cast<int>(m_tileW * z);
+    const int dstH = static_cast<int>(m_tileH * z);
 
     // Ask the camera which direction to iterate so painter's algorithm is correct
     // for the current battlefield rotation.

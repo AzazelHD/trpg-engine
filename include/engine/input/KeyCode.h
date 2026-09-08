@@ -57,6 +57,7 @@ enum class KeyCode
     D,
     Q,
     E,
+    X,
 
     // Actions
     Accept,  // was Confirm (Enter or Z)

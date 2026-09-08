@@ -62,21 +62,19 @@ Checkpoint: Engine can run a stable empty loop with input + logging.
 
 - [x] Implement Camera — [Camera.h](include/engine/renderer/Camera.h) / [Camera.cpp](src/engine/renderer/Camera.cpp)
   - [x] position (x, y)
-  - [x] worldToScreen(Rectf) -> SDL_Rect
-  - [x] follow(Vec2f target)
+    - [x] tile/iso -> screen transforms (`tileToScreen`, `isoSpaceRectToScreen`)
+    - [x] follow/track target (`follow`, `trackTarget`)
 
 - [x] Extend Camera (later) — [Camera.h](include/engine/renderer/Camera.h) / [Camera.cpp](src/engine/renderer/Camera.cpp)
   - [x] zoom
-  - [x] clampToBounds(Rectf mapBounds)
+    - [x] clampToBounds() with map-size bounds configured via `setMapSize(...)`
   - [x] smoothing (lerp follow)
 
 ---
 
 ### E4.3 — Sprite Rendering
 
-- [x] Implement SpriteBatch — [SpriteBatch.h](include/engine/renderer/SpriteBatch.h) / [SpriteBatch.cpp](src/engine/renderer/SpriteBatch.cpp)
-  - [x] queue draw commands (DrawCommand with SDL_Rect, flushed as SDL_FRect)
-  - [x] flush via SDL_RenderTextureRotated
+- [x] Implement SpriteBatch — [SpriteBatch.h](include/engine/renderer/SpriteBatch.h) / [SpriteBatch.cpp](src/engine/renderer/SpriteBatch.cpp) - [x] queue draw commands (DrawCommand with `Recti` source + `Rectf` destination) - [x] flush through engine `Renderer::drawTexture(...)`
   - [x] clear per frame
 
 - [x] Enforce screen-space input contract — [SpriteBatch.h](include/engine/renderer/SpriteBatch.h) / [SpriteBatch.cpp](src/engine/renderer/SpriteBatch.cpp)
@@ -163,9 +161,32 @@ Checkpoint: A game boots into its first Scene using only public engine APIs.
 
 ---
 
+## E8 — Animation Primitives
+
+- [x] Add `Tween<T>` fixed-duration eased value interpolation — [Tween.h](include/engine/animation/Tween.h)
+- [x] Add `AnimationState` playback interface — [AnimationState.h](include/engine/animation/AnimationState.h)
+- [x] Add `Animator` named-state machine (trigger + exit-time transitions) — [Animator.h](include/engine/animation/Animator.h) / [Animator.cpp](src/engine/animation/Animator.cpp)
+- [x] Add iso facing helper (`IsoDirection`, FFTA-style SW/SE/NW/NE) — [MathUtils.h](include/engine/math/MathUtils.h)
+- [x] Verify all new headers are self-contained via `tools/check_public_headers.py`
+- [x] Fix pre-existing Release-only `/WX` breaks (`StateMachine.h`, `DebugRenderer.cpp`) so both Debug and Release build clean
+- [x] Add `TimedState` one-shot duration state (exit-time leaf, `progress()`) — [TimedState.h](include/engine/animation/TimedState.h)
+- [x] Wire game-side consumers (combat effects, floating text) to `Animator` + `TimedState` + `Tween` — `CombatAnimationSystem` (per-effect one-shot animator), `FloatingTextSystem` (rise/fade `Tween`)
+
+Checkpoint: Engine exposes reusable tweening and an animator FSM; game_1 consumes it.
+
+---
+
 ## Ongoing Rules
 
 - Engine does not own concrete game scenes, dialog presentation, or gameplay concepts
 - Public headers remain stable and consumer-oriented
 - Zero warnings target in Debug (/W4 /WX)
 - Validate changes with a fresh configure + build periodically
+
+---
+
+## Documentation
+
+- [x] Add engine component responsibility documentation (`ARCHITECTURE.md`)
+- [x] Refresh development plan to match current SDL3-based implementation
+- [ ] Add automated docs check/update step to keep TODO/PLAN/docs aligned

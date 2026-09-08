@@ -18,6 +18,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 # Engine library
 # =========================
 add_library(engine STATIC
+    src/engine/animation/Animator.cpp
     src/engine/assets/FileWatcher.cpp
     src/engine/assets/HotReloadBus.cpp
     src/engine/core/App.cpp
@@ -42,6 +43,7 @@ add_library(engine STATIC
     src/engine/ui/TextLabel.cpp
     src/engine/ui/ButtonControl.cpp
     src/engine/ui/SliderControl.cpp
+    src/engine/ui/TextWrap.cpp
     src/engine/ui/ValueControl.cpp
     )
 

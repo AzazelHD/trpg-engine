@@ -120,9 +120,9 @@ private:
             : type(t), state(std::move(s)) {}
     };
 
-    void logTransition(const char *op, const T *state, bool isReplace = false)
+    void logTransition([[maybe_unused]] const char *op, [[maybe_unused]] const T *state, bool isReplace = false)
     {
-        const char *suffix = isReplace ? " (replace)" : "";
+        [[maybe_unused]] const char *suffix = isReplace ? " (replace)" : "";
         LOG_INFO("StateMachine", "%s -> %s%s", op, state ? typeid(*state).name() : "<null>", suffix);
         LOG_INFO("StateMachine", "TOP  -> %s", currentStateDebugName());
     }
@@ -140,7 +140,7 @@ private:
     {
         if (m_states.empty())
             return;
-        const char *poppedName = typeid(*m_states.top()).name();
+        [[maybe_unused]] const char *poppedName = typeid(*m_states.top()).name();
         m_states.top()->onExit();
         m_states.pop();
         LOG_INFO("StateMachine", "POP  -> %s", poppedName);

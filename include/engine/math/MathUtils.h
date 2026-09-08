@@ -115,3 +115,30 @@ inline Vec2i isoToTile(Vec2f iso, int tileW, int tileH)
         static_cast<int>(std::round(x)),
         static_cast<int>(std::round(y))};
 }
+
+// --- ISOMETRIC DIRECTION (FFTA-style four diagonal facings) ---
+// On a 2:1 isometric grid (see tileToIso), a tile-space movement delta maps
+// to a screen diagonal:
+//   +x steps move right+down on screen (SouthEast)
+//   +y steps move left+down  on screen (SouthWest)
+//   -x steps move left+up    on screen (NorthWest)
+//   -y steps move right+up   on screen (NorthEast)
+// Pass a nonzero (dx, dy) tile delta to pick the facing a unit sprite should
+// use. A zero delta falls back to SouthWest (callers may want to keep facing).
+enum class IsoDirection
+{
+    NorthEast,
+    SouthEast,
+    SouthWest,
+    NorthWest
+};
+
+inline IsoDirection isoDirectionForTileDelta(Vec2i delta)
+{
+    const int screenDx = delta.x - delta.y;
+    const int screenDy = delta.x + delta.y;
+
+    if (screenDy >= 0)
+        return screenDx > 0 ? IsoDirection::SouthEast : IsoDirection::SouthWest;
+    return screenDx > 0 ? IsoDirection::NorthEast : IsoDirection::NorthWest;
+}
