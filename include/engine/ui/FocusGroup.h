@@ -71,6 +71,13 @@ public:
         applySelection();
     }
 
+    // When wrap is disabled, focusPrevious/focusNext stop at the nearest
+    // enabled item at the ends instead of cycling through the whole group.
+    // Enabled by default; menus that should not wrap (e.g. a fixed action
+    // list) can turn it off per group.
+    void setWrap(bool enabled) { m_wrap = enabled; }
+    [[nodiscard]] bool wrap() const { return m_wrap; }
+
     [[nodiscard]] bool activateSelected() const
     {
         if (m_items.empty())
@@ -152,21 +159,42 @@ private:
         }
 
         const int count = static_cast<int>(m_items.size());
-        int currentIndex = m_selectedIndex;
+        const int currentIndex = m_selectedIndex;
 
         if (currentIndex < 0 || currentIndex >= count)
         {
             return findFirstEnabledIndex();
         }
 
+        if (!m_wrap)
+        {
+            const int step = direction < 0 ? -1 : 1;
+            for (int candidate = currentIndex + step; candidate >= 0 && candidate < count; candidate += step)
+            {
+                const IFocusable *item = m_items[candidate];
+                if (item != nullptr && item->isEnabled())
+                {
+                    return candidate;
+                }
+            }
+            return currentIndex; // nothing enabled beyond — stay put, don't wrap
+        }
+
+        const int stepDirection = direction < 0 ? -1 : 1;
+        int cursor = currentIndex + stepDirection;
         for (int step = 0; step < count; ++step)
         {
-            currentIndex = (currentIndex + direction + count) % count;
-            const IFocusable *item = m_items[currentIndex];
+            if (cursor < 0)
+                cursor = count - 1;
+            else if (cursor >= count)
+                cursor = 0;
+
+            const IFocusable *item = m_items[cursor];
             if (item != nullptr && item->isEnabled())
             {
-                return currentIndex;
+                return cursor;
             }
+            cursor += stepDirection;
         }
 
         return -1;
@@ -186,4 +214,5 @@ private:
 
     std::vector<IFocusable *> m_items;
     int m_selectedIndex = -1;
+    bool m_wrap = true;
 };

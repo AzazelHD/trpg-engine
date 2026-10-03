@@ -193,6 +193,8 @@ int Input::keyCodeToScancode(KeyCode key)
         return SDL_SCANCODE_SPACE;
     case KeyCode::Details:
         return SDL_SCANCODE_TAB;
+    case KeyCode::Journal:
+        return SDL_SCANCODE_J;
 
     case KeyCode::CameraPanUp:
         return SDL_SCANCODE_KP_8;

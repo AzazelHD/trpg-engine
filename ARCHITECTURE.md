@@ -37,10 +37,10 @@ The engine must stay gameplay-agnostic. Game-specific rules, scene behavior, AI,
 
 ### Rendering (`include/engine/renderer`)
 
-- `Renderer`: SDL abstraction for drawing, text, textures, and logical/native pass boundaries.
+- `Renderer`: SDL abstraction for drawing, text, textures, and logical/native pass boundaries. `drawTexture()` accepts a per-draw RGB tint and `BlendMode{None, Blend, Add, Mod}` override for recolours/effects.
 - `Camera`: tile/screen transforms, follow/tracking, zoom, rotation, and clamping.
 - `Texture`, `Font`, `FontManager`: texture/font asset interfaces.
-- `SpriteBatch`: queued sprite draw submission utility.
+- `SpriteBatch`: queued sprite draw submission utility; forwards a per-command tint/blend through to `Renderer::drawTexture()`.
 - `TileLayer`: tile-layer rendering helper.
 - `DebugRenderer`: optional debug draw support.
 
@@ -53,7 +53,11 @@ The engine must stay gameplay-agnostic. Game-specific rules, scene behavior, AI,
 
 - Widgets: `Button`, `Slider`, `TextLabel`, `MenuPanel`.
 - Settings/menu controls: `ButtonControl`, `SliderControl`, `ValueControl`.
-- Focus and layout: `FocusGroup`, `IFocusable`, `HorizontalLayout`, `VerticalLayout`, `Insets`.
+- Focus and layout: `FocusGroup` (wrap toggle via `setWrap`), `IFocusable`, `HorizontalLayout`, `VerticalLayout`, `Insets`.
+- Text layout: `TextWrap` (word-wrap text to a max width); `TextBlock`
+  (measure, anchor, and draw a stacked block of wrapped text rows — composed
+  on `TextWrap` + `VerticalLayout`, with nine-way anchor semantics where
+  content grows away from the anchored edge).
 
 ### Data and content (`include/engine/data`)
 

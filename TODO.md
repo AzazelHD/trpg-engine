@@ -81,6 +81,12 @@ Checkpoint: Engine can run a stable empty loop with input + logging.
   - [x] SpriteBatch only accepts SDL_Rect (no world-space types)
   - [x] caller must apply camera.worldToScreen before draw()
 
+- [x] Per-draw texture tint + blend modes — [Renderer.h](include/engine/renderer/Renderer.h) / [Renderer.cpp](src/engine/renderer/Renderer.cpp) / [SpriteBatch.h](include/engine/renderer/SpriteBatch.h) / [SpriteBatch.cpp](src/engine/renderer/SpriteBatch.cpp)
+  - [x] `BlendMode{None, Blend, Add, Mod}` and matching `setBlendMode`/`getBlendMode` mapping
+  - [x] `Renderer::drawTexture(..., Color tint, BlendMode blend)` applies a per-channel RGB multiply (texture color mod) and a texture blend-mode override for this draw only, restoring both on exit
+  - [x] `SpriteBatch::draw(..., tint, blend)` stores and forwards them on flush
+  - Migration: additive change (new defaulted parameters). Existing `drawTexture`/`SpriteBatch::draw` call sites compile unchanged. Textures are unaffected unless a non-white tint or non-`Blend` blend is passed. Note the engine's `Renderer` ignores texture `.a`; alpha stays with `setTextureAlphaMod()`.
+
 ---
 
 ### E4.4 — World Rendering
@@ -118,7 +124,9 @@ Checkpoint: Engine can render textures on screen using a camera-driven pipeline.
 - [x] Add a game bootstrap hook so consumers can provide the first Scene without modifying engine internals  
        Edit: [App.h](include/engine/core/App.h), [App.cpp](src/engine/core/App.cpp)
 - [x] Add generic focus/layout helpers for keyboard-first UI composition  
-       Edit/create: [FocusGroup.h](include/engine/ui/FocusGroup.h), [IFocusable.h](include/engine/ui/IFocusable.h), [VerticalLayout.h](include/engine/ui/VerticalLayout.h)
+        Edit/create: [FocusGroup.h](include/engine/ui/FocusGroup.h), [IFocusable.h](include/engine/ui/IFocusable.h), [VerticalLayout.h](include/engine/ui/VerticalLayout.h)
+- [x] Add a wrap toggle to `FocusGroup` (`setWrap(false)` stops at the ends instead of cycling; default keeps wrap) for fixed action lists  
+        Edit: [FocusGroup.h](include/engine/ui/FocusGroup.h)
 - [x] Move or rename game-flavored concepts from engine-facing APIs so this layer stays domain-neutral  
        Edit: [KeyCode.h](include/engine/input/KeyCode.h), [Input.h](include/engine/input/Input.h) (and corresponding usage sites)
 
@@ -138,6 +146,8 @@ Checkpoint: Generic scene transitions and UI primitives run without crashes.
        Edit/create: [TileMapData.h](include/engine/data/TileMapData.h), [TileMapData.cpp](src/engine/data/TileMapData.cpp)
 - [x] Add Tiled JSON loader API  
        Edit/create: [TiledJsonLoader.h](include/engine/data/TiledJsonLoader.h), [TiledJsonLoader.cpp](src/engine/data/TiledJsonLoader.cpp)
+- [x] Add focused tests for `TiledJsonLoader` and property decoding edge cases  
+       Edit/create: [TiledJsonLoaderTests.cpp](tests/TiledJsonLoaderTests.cpp), fixtures under [tests/data](tests/data), test target in [CMakeLists.txt](CMakeLists.txt)
 - [x] Add dev-mode debounce and reload error logging  
        Edit: [FileWatcher.cpp](src/engine/assets/FileWatcher.cpp), [HotReloadBus.cpp](src/engine/assets/HotReloadBus.cpp)
 - [x] Add hot-reload sources to engine target so they are compiled and warning-checked  
@@ -173,6 +183,23 @@ Checkpoint: A game boots into its first Scene using only public engine APIs.
 - [x] Wire game-side consumers (combat effects, floating text) to `Animator` + `TimedState` + `Tween` — `CombatAnimationSystem` (per-effect one-shot animator), `FloatingTextSystem` (rise/fade `Tween`)
 
 Checkpoint: Engine exposes reusable tweening and an animator FSM; game_1 consumes it.
+
+---
+
+## E9 — Text Layout Helpers
+
+- [x] Add `TextBlock` measure / anchored-origin / render API  
+       Edit/create: [TextBlock.h](include/engine/ui/TextBlock.h), [TextBlock.cpp](src/engine/ui/TextBlock.cpp)
+  - [x] wraps rows via `TextWrap` and stacks them via `VerticalLayout`
+  - [x] nine-way anchor (content grows away from the anchored edge; bottom-anchored blocks rise)
+  - [x] per-row horizontal alignment inside a max width
+  - [x] measured row widths/heights sourced from `Renderer::measureText`
+- [x] Register `TextBlock.cpp` in the engine target so it is compiled and warning-checked  
+       Edit: [CMakeLists.txt](CMakeLists.txt)
+- [x] Verify the new header is self-contained via `tools/check_public_headers.py`
+- [x] Replace a hand-rolled bottom-anchored text layout in game_1 (`IntroState`) with the engine `TextBlock`
+
+Checkpoint: Engine exposes reusable anchored text-block layout; consumers no longer reimplement measure/stack/align by hand.
 
 ---
 

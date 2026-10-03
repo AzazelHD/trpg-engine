@@ -51,8 +51,10 @@ struct SDL_Renderer;
 //       SDL_GetRenderDrawColor.
 //
 // [x] setBlendMode(BlendMode) / getBlendMode() - SDL_SetRenderDrawBlendMode /
-//       SDL_GetRenderDrawBlendMode. BlendMode{None, Blend} covers current usage;
-//       extend if a state needs Add/Mod later.
+//       SDL_GetRenderDrawBlendMode. Controls primitives and non-textured
+//       geometry. BlendMode{None, Blend, Add, Mod}: Add for glows/effects, Mod
+//       for multiplying. Textures are different — SDL_RenderTexture() reads the
+//       texture's own blend mode, so drawTexture() takes a per-draw override.
 //
 // -----------------------------------------------------------------------------
 // Geometry / primitives
@@ -61,6 +63,11 @@ struct SDL_Renderer;
 // [x] fillRect(Rectf) - SDL_RenderFillRect.
 // [x] drawRect(Rectf) - SDL_RenderRect (outline).
 // [x] drawLine(Vec2f, Vec2f) - SDL_RenderLine.
+// [x] fillCircle(Vec2f center, float radius) - filled disc (current draw color)
+//       via a 32-seg triangle fan sent to SDL_RenderGeometry. Smooth rim at
+//       both tiny dial dots and large placeholder sprites — never use a 1px
+//       scanline fill, it looks jagged. Matches fillRect: honors world vs
+//       logical pass (per-vertex transform) and blend state.
 //
 // [x] drawGeometry(vertices, indices) - generic textured/colored triangle list via
 //       SDL_RenderGeometry. Vertex{position: Vec2f, color: FColor}. Covers both the
@@ -81,9 +88,17 @@ struct SDL_Renderer;
 //
 // [x] setTextureScaleMode(Texture*, ScaleMode) - SDL_SetTextureScaleMode.
 //
-// [x] drawTexture(Texture*, src: Recti, dst: Rectf, flipH = false) -
+// [x] drawTexture(Texture*, src: Recti, dst: Rectf, flipH = false,
+//       tint: Color = white, blend: BlendMode = Blend) -
 //       SDL_RenderTexture / SDL_RenderTextureRotated(angle=0, flip=H)
 //       when flipH is true.
+//       `tint` is a per-channel RGB multiply (255 = unchanged), for buff/debuff
+//       recolours such as an enraged sprite going red. Alpha is not part of the
+//       tint — use setTextureAlphaMod() for that.
+//       `blend` combines the textured quad with what is behind it and applies
+//       to THIS draw only (SDL_RenderTexture() uses the texture's blend mode,
+//       not the renderer's draw blend mode). Both overrides are restored on
+//       exit, so a shared Texture is never left mutated.
 //
 // -----------------------------------------------------------------------------
 // Debug
@@ -96,7 +111,9 @@ public:
     enum class BlendMode
     {
         None,
-        Blend
+        Blend,
+        Add,
+        Mod
     };
 
     enum class ScaleMode
@@ -152,6 +169,7 @@ public:
     void fillRect(Rectf rect);
     void drawRect(Rectf rect);
     void drawLine(Vec2f a, Vec2f b);
+    void fillCircle(Vec2f center, float radius);
     void drawGeometry(const std::vector<Vertex> &vertices,
                       const std::vector<int> &indices);
 
@@ -205,7 +223,9 @@ public:
     void drawTexture(const Texture *texture,
                      Recti src,
                      Rectf dst,
-                     bool flipH = false);
+                     bool flipH = false,
+                     Color tint = Color::white(),
+                     BlendMode blend = BlendMode::Blend);
 
     // --- Debug ---
     void drawDebugText(Vec2f pos, const std::string &text);

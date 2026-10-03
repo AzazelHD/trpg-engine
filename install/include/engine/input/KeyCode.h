@@ -12,15 +12,18 @@
 //     Up, Down, Left, Right
 //
 //   Actions:
-//     Confirm   (Enter or Z)
-//     Cancel    (Escape or X)
-//     Pause     (P or Start)
-//
-//   Camera pan (separate from cursor so you can move the view without moving the cursor):
-//     CameraPanUp    (I or numpad 8)
-//     CameraPanDown  (K or numpad 2)
-//     CameraPanLeft  (J or numpad 4)
-//     CameraPanRight (L or numpad 6)
+    //     Confirm   (Enter or Z)
+    //     Cancel    (Escape or X)
+    //     Pause     (P or Start)
+    //
+    //   Quest journal:
+    //     Journal   (J)
+    //
+    //   Camera pan (separate from cursor so you can move the view without moving the cursor):
+    //     CameraPanUp    (numpad 8)
+    //     CameraPanDown  (numpad 2)
+    //     CameraPanLeft  (numpad 4)
+    //     CameraPanRight (numpad 6)
 //     CameraZoomIn   (+ or numpad +)
 //     CameraZoomOut  (- or numpad -)
 //     CameraReset    (Home — snaps camera back to the active unit)
@@ -38,7 +41,7 @@
 // By using this enum, game code never depends on SDL headers directly.
 //
 // Rename note (v0.1.0):
-//   Confirm       -> Accept
+//   Confirm       -> ButtonPressed
 //   Cancel        -> Back
 //   DialogAdvance -> Advance
 //
@@ -55,12 +58,17 @@ enum class KeyCode
     A,
     S,
     D,
+    Q,
+    E,
+    X,
 
     // Actions
     Accept,  // was Confirm (Enter or Z)
     Back,    // was Cancel (Escape or X)
     Pause,   // P
     Advance, // was DialogAdvance (Space or Enter)
+    Details, // Tab
+    Journal, // J — quest journal
 
     // Camera controls
     CameraPanUp,

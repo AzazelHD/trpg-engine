@@ -16,6 +16,38 @@ namespace
     SDL_FRect toSDL(Rectf r) { return {r.x, r.y, r.w, r.h}; }
     SDL_FRect toSDL(Recti r) { return {(float)r.x, (float)r.y, (float)r.w, (float)r.h}; }
 
+    SDL_BlendMode toSDL(Renderer::BlendMode mode)
+    {
+        switch (mode)
+        {
+        case Renderer::BlendMode::None:
+            return SDL_BLENDMODE_NONE;
+        case Renderer::BlendMode::Add:
+            return SDL_BLENDMODE_ADD;
+        case Renderer::BlendMode::Mod:
+            return SDL_BLENDMODE_MOD;
+        case Renderer::BlendMode::Blend:
+        default:
+            return SDL_BLENDMODE_BLEND;
+        }
+    }
+
+    Renderer::BlendMode fromSDL(SDL_BlendMode mode)
+    {
+        switch (mode)
+        {
+        case SDL_BLENDMODE_NONE:
+            return Renderer::BlendMode::None;
+        case SDL_BLENDMODE_ADD:
+            return Renderer::BlendMode::Add;
+        case SDL_BLENDMODE_MOD:
+            return Renderer::BlendMode::Mod;
+        case SDL_BLENDMODE_BLEND:
+        default:
+            return Renderer::BlendMode::Blend;
+        }
+    }
+
     int toTTFStyle(bool bold, bool italic, bool underline)
     {
         int style = TTF_STYLE_NORMAL;
@@ -279,9 +311,7 @@ Color Renderer::getDrawColor() const
 // [x] setBlendMode(): maps BlendMode -> SDL_BlendMode.
 void Renderer::setBlendMode(BlendMode mode)
 {
-    SDL_SetRenderDrawBlendMode(
-        m_renderer,
-        mode == BlendMode::Blend ? SDL_BLENDMODE_BLEND : SDL_BLENDMODE_NONE);
+    SDL_SetRenderDrawBlendMode(m_renderer, toSDL(mode));
 }
 
 // [x] getBlendMode(): maps SDL_BlendMode -> BlendMode.
@@ -289,7 +319,7 @@ Renderer::BlendMode Renderer::getBlendMode() const
 {
     SDL_BlendMode mode;
     SDL_GetRenderDrawBlendMode(m_renderer, &mode);
-    return mode == SDL_BLENDMODE_BLEND ? BlendMode::Blend : BlendMode::None;
+    return fromSDL(mode);
 }
 
 // -----------------------------------------------------------------------------
@@ -300,6 +330,40 @@ void Renderer::fillRect(Rectf rect)
 {
     SDL_FRect r = toSDL(toNativeRect(rect));
     SDL_RenderFillRect(m_renderer, &r);
+}
+
+// [x] fillCircle(): filled disc (current draw color) sent through
+//       drawGeometry as a 32-segment triangle fan — the rim is smooth enough
+//       for both 2 px dial dots and large placeholder sprites, with no
+//       scanline stair-stepping.
+void Renderer::fillCircle(Vec2f center, float radius)
+{
+    if (radius <= 0.0f)
+        return;
+
+    constexpr int kSegments = 32;
+    constexpr float kTwoPi = 6.28318530718f;
+
+    const FColor fill{getDrawColor()};
+    std::vector<Vertex> vertices;
+    vertices.reserve(kSegments + 1);
+    vertices.push_back({center, fill});
+    for (int i = 0; i < kSegments; ++i)
+    {
+        const float a = kTwoPi * static_cast<float>(i + 1) / static_cast<float>(kSegments);
+        vertices.push_back({center + Vec2f{std::sin(a), std::cos(a)} * radius, fill});
+    }
+
+    std::vector<int> indices;
+    indices.reserve(kSegments * 3);
+    for (int i = 0; i < kSegments; ++i)
+    {
+        indices.push_back(0);
+        indices.push_back(i + 1);
+        indices.push_back(i + 1 == kSegments ? 1 : i + 2);
+    }
+
+    drawGeometry(vertices, indices);
 }
 
 void Renderer::drawRect(Rectf rect)
@@ -575,11 +639,25 @@ void Renderer::renderTextInRect(const Font *font,
     renderText(font, text, pos, color, bold, italic, underline);
 }
 
-// [x] drawTexture(): SDL_RenderTexture, or SDL_RenderTextureRotated(angle=0, flip=H)
-//       when flipH is true.
-void Renderer::drawTexture(const Texture *texture, Recti src, Rectf dst, bool flipH)
+// [x] drawTexture(): tint (texture color mod) + per-draw blend override, then
+//       SDL_RenderTexture, or SDL_RenderTextureRotated(angle=0, flip=H) when
+//       flipH is true. SDL_RenderTexture() uses the TEXTURE's blend mode, not
+//       the renderer's draw blend mode, so the override is applied to the
+//       texture and restored here.
+void Renderer::drawTexture(const Texture *texture, Recti src, Rectf dst, bool flipH,
+                           Color tint, BlendMode blend)
 {
     auto *sdlTex = static_cast<SDL_Texture *>(texture->m_texture);
+
+    const bool tinted = tint.r != 255 || tint.g != 255 || tint.b != 255;
+    if (tinted)
+        SDL_SetTextureColorMod(sdlTex, tint.r, tint.g, tint.b);
+
+    SDL_BlendMode previousBlend = SDL_BLENDMODE_BLEND;
+    SDL_GetTextureBlendMode(sdlTex, &previousBlend);
+    const SDL_BlendMode desiredBlend = toSDL(blend);
+    if (desiredBlend != previousBlend)
+        SDL_SetTextureBlendMode(sdlTex, desiredBlend);
 
     SDL_FRect srcRect = toSDL(src);
     const Rectf nativeDst = m_inWorldPass ? dst : toNativeRect(dst);
@@ -593,6 +671,11 @@ void Renderer::drawTexture(const Texture *texture, Recti src, Rectf dst, bool fl
     {
         SDL_RenderTexture(m_renderer, sdlTex, &srcRect, &dstRect);
     }
+
+    if (desiredBlend != previousBlend)
+        SDL_SetTextureBlendMode(sdlTex, previousBlend);
+    if (tinted)
+        SDL_SetTextureColorMod(sdlTex, 255, 255, 255);
 }
 
 // -----------------------------------------------------------------------------

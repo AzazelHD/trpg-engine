@@ -1,0 +1,55 @@
+{
+  "type": "map",
+  "version": "1.9",
+  "orientation": "orthogonal",
+  "renderorder": "right-down",
+  "width": 3,
+  "height": 3,
+  "tilewidth": 16,
+  "tileheight": 16,
+  "infinite": false,
+  "layers": [
+    {
+      "id": 1,
+      "name": "ground",
+      "type": "tilelayer",
+      "width": 3,
+      "height": 3,
+      "visible": true,
+      "opacity": 1,
+      "offsetx": 0,
+      "offsety": 0,
+      "data": [1, 2, 3, 4, 1, 2, 3, 4, 1]
+    },
+    {
+      "id": 2,
+      "name": "empty",
+      "type": "tilelayer",
+      "width": 2,
+      "height": 2
+    },
+    {
+      "id": 3,
+      "name": "spawns",
+      "type": "objectgroup",
+      "visible": true,
+      "objects": [
+        { "id": 10, "name": "playerSpawn", "class": "spawn_player", "x": 16.0, "y": 32.0, "point": true },
+        { "id": 11, "name": "enemySpawn", "type": "spawn_enemy", "x": 24.0, "y": 8.0, "width": 16, "height": 16 }
+      ]
+    }
+  ],
+  "tilesets": [
+    {
+      "firstgid": 1,
+      "name": "tiles",
+      "image": "tiles.png",
+      "imagewidth": 32,
+      "imageheight": 64,
+      "tilewidth": 16,
+      "tileheight": 16,
+      "tilecount": 4,
+      "columns": 2
+    }
+  ]
+}

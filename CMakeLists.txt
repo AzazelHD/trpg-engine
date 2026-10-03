@@ -43,6 +43,7 @@ add_library(engine STATIC
     src/engine/ui/TextLabel.cpp
     src/engine/ui/ButtonControl.cpp
     src/engine/ui/SliderControl.cpp
+    src/engine/ui/TextBlock.cpp
     src/engine/ui/TextWrap.cpp
     src/engine/ui/ValueControl.cpp
     )
@@ -137,3 +138,15 @@ install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/TRPGEngineConfigVersion.cmake
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/TRPGEngine
 )
+
+# =========================
+# Tests (only when the engine is the top-level project)
+# =========================
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    enable_testing()
+    add_executable(engine_tests tests/TiledJsonLoaderTests.cpp)
+    target_link_libraries(engine_tests PRIVATE engine nlohmann_json::nlohmann_json)
+    target_compile_features(engine_tests PRIVATE cxx_std_20)
+    target_compile_options(engine_tests PRIVATE /W4 /WX)
+    add_test(NAME engine_tests COMMAND engine_tests)
+endif()

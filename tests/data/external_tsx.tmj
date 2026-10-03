@@ -1,0 +1,21 @@
+{
+  "width": 2,
+  "height": 2,
+  "tilewidth": 16,
+  "tileheight": 16,
+  "layers": [
+    {
+      "name": "ground",
+      "type": "tilelayer",
+      "width": 2,
+      "height": 2,
+      "data": [1, 3221225473, 2, 536870915]
+    }
+  ],
+  "tilesets": [
+    {
+      "firstgid": 1,
+      "source": "external.tsx"
+    }
+  ]
+}

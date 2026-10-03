@@ -34,10 +34,10 @@ Gameplay and content behavior belongs to `game_1/` and is tracked in `game_1/PLA
 
 ### Rendering (`renderer/`)
 
-- `Renderer`: SDL abstraction and pass model (`beginLogicalPass` / `endLogicalPass`)
+- `Renderer`: SDL abstraction and pass model (`beginLogicalPass` / `endLogicalPass`); textured draws take a per-draw tint + `BlendMode{None, Blend, Add, Mod}`
 - `Camera`: tile/screen transforms, tracking, clamping, zoom, rotation
 - `Texture`, `Font`, `FontManager`: graphics and text assets
-- `SpriteBatch`, `TileLayer`: batched sprite and tile layer rendering utilities
+- `SpriteBatch`, `TileLayer`: batched sprite and tile layer rendering utilities (SpriteBatch forwards per-command tint/blend)
 - `DebugRenderer`: optional debug overlays in world space
 
 ### Scene and flow (`scene/`, `statemachine/`)
@@ -50,6 +50,9 @@ Gameplay and content behavior belongs to `game_1/` and is tracked in `game_1/PLA
 - Focus and widget primitives: `Button`, `Slider`, `TextLabel`, `MenuPanel`
 - Settings/menu controls: `ButtonControl`, `SliderControl`, `ValueControl`
 - Layout helpers: `HorizontalLayout`, `VerticalLayout`, `Insets`, `FocusGroup`
+- Text layout: `TextWrap` (word-wrap to a max width) and `TextBlock`
+  (measure / anchored-origin / render for stacked wrapped text rows, grown
+  away from a chosen edge via nine-way anchors)
 
 ### Data/content pipeline (`data/`)
 
@@ -81,13 +84,21 @@ Gameplay and content behavior belongs to `game_1/` and is tracked in `game_1/PLA
 4. Scene stack and UI primitives: done
 5. Tiled data pipeline and hot-reload foundation: done
 6. Animation primitives (`Tween`, `Animator` FSM): done
-7. Remaining integration validation: pending
+7. Text and layout helpers (`TextBlock` anchored stack): done
+8. Remaining integration validation: in progress
 
 ## Remaining Work
 
 1. Validate full save-reload loop for map edits against a live consumer scene.
-2. Add focused tests for `TiledJsonLoader` and property decoding edge cases.
-3. Verify release-stripping expectations for debug and logging paths.
+2. Add focused tests for `TiledJsonLoader` and property decoding edge cases. (done)
+3. Verify release-stripping expectations for debug and logging paths. (done)
+   - `Log.h`: all `LOG_*` macros collapse to `((void)0)` when MSVC `_DEBUG` is
+     undefined (Release), so call-site args are never evaluated.
+   - `DebugRenderer`: bodies are `#ifndef NDEBUG`-scoped with Release no-op
+     definitions and `[[maybe_unused]]` params; public header drops storage;
+     all public methods still defined so consumers link in both configs.
+   - Verified: Debug AND Release build clean at `/W4 /WX`; `engine_tests` runs
+     strips correctly in both.
 4. Keep public headers stable while game-side systems evolve.
 
 ## Verification Checklist
@@ -97,6 +108,7 @@ Gameplay and content behavior belongs to `game_1/` and is tracked in `game_1/PLA
 - Logical/native render pass behavior remains deterministic
 - Scene transitions and UI controls remain input-safe
 - Content load failures degrade safely with clear logs
+- `engine_tests` passes in Debug and Release (loader + property decode edge cases)
 
 ## Non-Negotiables
 

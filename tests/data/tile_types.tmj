@@ -1,0 +1,23 @@
+{
+  "width": 2,
+  "height": 1,
+  "tilewidth": 16,
+  "tileheight": 16,
+  "layers": [],
+  "tilesets": [
+    {
+      "firstgid": 1,
+      "name": "typed",
+      "image": "t.png",
+      "tilewidth": 16,
+      "tileheight": 16,
+      "tilecount": 2,
+      "columns": 2,
+      "tiles": [
+        { "id": 0, "type": "GrassAtk" },
+        { "id": 1, "type": "GrassAtk" },
+        { "id": 5, "type": "Crater" }
+      ]
+    }
+  ]
+}

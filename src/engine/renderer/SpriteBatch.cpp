@@ -4,9 +4,10 @@
 // [x] draw(): push a DrawCommand onto m_commands.
 //     Caller is responsible for passing screen-ready Rectf (already projected
 //     by camera.tileToScreen()).
-void SpriteBatch::draw(const Texture *texture, Recti src, Rectf dst, bool flipH)
+void SpriteBatch::draw(const Texture *texture, Recti src, Rectf dst, bool flipH,
+                       Color tint, Renderer::BlendMode blend)
 {
-    m_commands.push_back(DrawCommand{texture, src, dst, flipH});
+    m_commands.push_back(DrawCommand{texture, src, dst, flipH, tint, blend});
 }
 
 // [x] flush(): send all queued draw commands through Renderer, then clear.
@@ -18,7 +19,8 @@ void SpriteBatch::flush(Renderer &renderer)
         if (!command.texture)
             continue;
 
-        renderer.drawTexture(command.texture, command.src, command.dst, command.flipH);
+        renderer.drawTexture(command.texture, command.src, command.dst,
+                             command.flipH, command.tint, command.blend);
     }
 
     clear();
