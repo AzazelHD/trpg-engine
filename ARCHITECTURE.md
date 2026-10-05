@@ -43,6 +43,8 @@ The engine must stay gameplay-agnostic. Game-specific rules, scene behavior, AI,
 - `SpriteBatch`: queued sprite draw submission utility; forwards a per-command tint/blend through to `Renderer::drawTexture()`.
 - `TileLayer`: tile-layer rendering helper.
 - `DebugRenderer`: optional debug draw support.
+- `Color`, `FColor`: 8-bit and float RGBA color types shared by every renderer/UI API.
+- `Aligment.h`: `HorizontalAlign` / `VerticalAlign` enums (filename spelling is historical).
 
 ### Scene and state flow (`include/engine/scene`, `include/engine/statemachine`)
 
@@ -52,7 +54,11 @@ The engine must stay gameplay-agnostic. Game-specific rules, scene behavior, AI,
 ### UI primitives and layout (`include/engine/ui`)
 
 - Widgets: `Button`, `Slider`, `TextLabel`, `MenuPanel`.
-- Settings/menu controls: `ButtonControl`, `SliderControl`, `ValueControl`.
+- Settings/menu controls: `ButtonControl`, `SliderControl`, `ValueControl`, all
+  implementing `IRowControl` (an `IFocusable` that can measure its width and
+  render into an arbitrary rect, so heterogeneous rows share one focus list).
+- `UIAnimation` / `UIAnimationTrack`: minimal start/update/isFinished animation
+  interface plus a track that owns and updates running animations.
 - Focus and layout: `FocusGroup` (wrap toggle via `setWrap`), `IFocusable`, `HorizontalLayout`, `VerticalLayout`, `Insets`.
 - Text layout: `TextWrap` (word-wrap text to a max width); `TextBlock`
   (measure, anchor, and draw a stacked block of wrapped text rows — composed
@@ -86,6 +92,13 @@ The engine must stay gameplay-agnostic. Game-specific rules, scene behavior, AI,
   `play()`/`trigger()`, how states sample sprites, and what facing to use
   (`IsoDirection` in `MathUtils`). Movable, so it can live in STL containers.
 
+### Tests (`tests/`)
+
+- `engine_tests` (`tests/TiledJsonLoaderTests.cpp`): framework-free executable
+  covering `TiledJsonLoader` and property decoding, with fixtures in
+  `tests/data/`. Built only when the engine is the top-level CMake project and
+  registered with CTest.
+
 ## Runtime Flow
 
 1. Consumer constructs `App` with scene factory.
@@ -115,6 +128,6 @@ Rules:
 
 ## Current Known Gaps
 
-1. End-to-end automated tests for map loader/property parsing are still limited.
+1. Automated tests cover only `TiledJsonLoader` and property decoding; other modules have none.
 2. Hot reload integration depends on consumer-side wiring patterns.
 3. Some debug/release behavior expectations rely on convention and should be codified by tests.

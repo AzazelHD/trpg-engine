@@ -22,8 +22,12 @@ engine/
 ├── tools/
 │   ├── build_debug.bat      # vcpkg + cmake --preset engine + build Debug
 │   ├── build_release.bat
-│   └── check_public_headers.py  # self-containment check for include/engine/*
-├── include/engine/          # PUBLIC API (the supported integration surface)
+│   ├── check_public_headers.py  # self-containment check for include/engine/*
+│   └── vsenv.bat            # MSVC environment wrapper (also used by game_1 builds)
+├── tests/                   # engine_tests: TiledJsonLoader/property-decode
+│   │                        # tests (standalone exe, no framework)
+│   └── data/                # .tmj/.tsx/.json fixtures for the loader tests
+├── include/engine/           # PUBLIC API (the supported integration surface)
 ├── src/engine/              # private implementation (may change without notice)
 └── install/include/engine/  # generated consumer copy (DEV flow uses build tree;
                              # sync manually when public headers change)
@@ -73,13 +77,17 @@ For detailed responsibilities see `ARCHITECTURE.md`. Quick roles:
 - `math/` — `Vec2`, `Rect`, `MathUtils` (lerp/clamp/distance/iso helpers).
 - `renderer/` — `Renderer` (draw/text/passes), `Camera` (tile transforms,
   follow/zoom/clamp), `Texture`/`Font`/`FontManager`, `SpriteBatch`,
-  `TileLayer`, `DebugRenderer`.
+  `TileLayer`, `DebugRenderer`, `Color`/`FColor` (color types),
+  `Aligment.h` (`HorizontalAlign`/`VerticalAlign`; filename spelling is
+  historical, do not "fix" it without a migration note).
 - `scene/` + `statemachine/` — `Scene` lifecycle; `StateMachine<T>`
   push/pop/replace with deferred mutation.
 - `ui/` — widgets (`Button`, `Slider`, `TextLabel`, `MenuPanel`), controls
-  (`ButtonControl`, `SliderControl`, `ValueControl`), layout (`FocusGroup`,
-  `HorizontalLayout`, `VerticalLayout`, `Insets`), text layout (`TextWrap`
-  word-wrap; `TextBlock` measure/anchor/render of stacked wrapped rows).
+  (`ButtonControl`, `SliderControl`, `ValueControl`, all implementing
+  `IRowControl : IFocusable`), layout (`FocusGroup`, `HorizontalLayout`,
+  `VerticalLayout`, `Insets`), text layout (`TextWrap` word-wrap; `TextBlock`
+  measure/anchor/render of stacked wrapped rows), `UIAnimation` /
+  `UIAnimationTrack` (fire-and-forget UI animations updated per frame).
 - `data/` — `TileMapData`, `TiledJsonLoader`, `PropertyId`/`PropertyRegistry`/
   `TileClass` map metadata conventions.
 - `assets/` — `FileWatcher`, `HotReloadBus` (polled change detection + bus).
@@ -108,10 +116,15 @@ For detailed responsibilities see `ARCHITECTURE.md`. Quick roles:
 engine> tools\build_debug.bat     # vcpkg install + CMake configure + Debug build
 engine> tools\build_release.bat   # Release build
 engine> python tools\check_public_headers.py   # self-containment scan
+engine> ctest --test-dir build -C Debug  # runs engine_tests (when engine is the top-level project)
 ```
 
 Rules:
 
+- `engine_tests` is a plain executable (no framework) covering
+  `TiledJsonLoader` and property decoding; add loader edge-case fixtures under
+  `tests/data/`. It is only built when the engine is the top-level CMake
+  project.
 - Rebuild `engine` after any header/source change, then rebuild the game.
 - `install/include/` is a consumer copy — sync changed public headers there
   when the release/install flow is used (DEV flow reads `../engine/include`).
