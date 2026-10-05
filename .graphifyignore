@@ -1,0 +1,12 @@
+build/
+install/
+vcpkg_installed/
+.opencode/
+.github/
+tests/data/
+PLAN.md
+TODO.md
+todo.txt
+.clinerules
+AGENTS.md
+latest_debug_run.txt
