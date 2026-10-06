@@ -1,5 +1,4 @@
 #pragma once
-#include <SDL3/SDL.h>
 #include "engine/math/Rect.h"
 #include "engine/renderer/Renderer.h"
 // [x]: Slider UI component for continuous value input (0–1 or custom range)

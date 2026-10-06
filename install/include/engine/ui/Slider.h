@@ -1,7 +1,6 @@
 #pragma once
-#include <SDL3/SDL.h>
 #include "engine/math/Rect.h"
-
+#include "engine/renderer/Renderer.h"
 // [x]: Slider UI component for continuous value input (0–1 or custom range)
 //      - Handles value storage + clamping (setValue/getValue)
 //      - Converts mouse drag into normalized value (handleDrag)
@@ -10,18 +9,29 @@
 class Slider
 {
 public:
+    struct RenderStyle
+    {
+        float trackHeight = 8.0f;
+        float handleWidth = 10.0f;
+        float handleHeight = 16.0f;
+        float offsetY = 0.0f;
+    };
+
     void setTrackRect(Rectf track);
     void setRange(float min, float max);
     void setValue(float value);
     void handleDrag(int mouseX, int mouseY, bool dragging);
-    void render(SDL_Renderer *renderer) const;
+    void render(Renderer *renderer) const;
     void step(float delta);
     float getValue() const;
     float normalized() const;
+    void setRenderStyle(const RenderStyle &style) { m_style = style; }
+    [[nodiscard]] const RenderStyle &getRenderStyle() const { return m_style; }
 
 private:
     Rectf m_track{};
     float m_min = 0.0f;
     float m_max = 1.0f;
     float m_value = 0.0f;
+    RenderStyle m_style{};
 };

@@ -60,7 +60,7 @@ add_library(TRPG::engine STATIC IMPORTED)
 
 set_target_properties(TRPG::engine PROPERTIES
   INTERFACE_COMPILE_FEATURES "cxx_std_20"
-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include;${_IMPORT_PREFIX}/include/engine"
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
   INTERFACE_LINK_LIBRARIES "SDL3::SDL3-shared;SDL3_image::SDL3_image-shared;\$<LINK_ONLY:SDL3_mixer::SDL3_mixer-shared>;\$<LINK_ONLY:SDL3_ttf::SDL3_ttf-shared>;\$<LINK_ONLY:nlohmann_json::nlohmann_json>"
 )
 

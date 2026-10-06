@@ -177,7 +177,7 @@ Checkpoint: A game boots into its first Scene using only public engine APIs.
 - [x] Add `AnimationState` playback interface — [AnimationState.h](include/engine/animation/AnimationState.h)
 - [x] Add `Animator` named-state machine (trigger + exit-time transitions) — [Animator.h](include/engine/animation/Animator.h) / [Animator.cpp](src/engine/animation/Animator.cpp)
 - [x] Add iso facing helper (`IsoDirection`, FFTA-style SW/SE/NW/NE) — [MathUtils.h](include/engine/math/MathUtils.h)
-- [x] Verify all new headers are self-contained via `tools/check_public_headers.py`
+- [x] Verify all new headers are self-contained (compile alone with the real C++20 + vcpkg toolchain)
 - [x] Fix pre-existing Release-only `/WX` breaks (`StateMachine.h`, `DebugRenderer.cpp`) so both Debug and Release build clean
 - [x] Add `TimedState` one-shot duration state (exit-time leaf, `progress()`) — [TimedState.h](include/engine/animation/TimedState.h)
 - [x] Wire game-side consumers (combat effects, floating text) to `Animator` + `TimedState` + `Tween` — `CombatAnimationSystem` (per-effect one-shot animator), `FloatingTextSystem` (rise/fade `Tween`)
@@ -196,7 +196,7 @@ Checkpoint: Engine exposes reusable tweening and an animator FSM; game_1 consume
   - [x] measured row widths/heights sourced from `Renderer::measureText`
 - [x] Register `TextBlock.cpp` in the engine target so it is compiled and warning-checked  
        Edit: [CMakeLists.txt](CMakeLists.txt)
-- [x] Verify the new header is self-contained via `tools/check_public_headers.py`
+- [x] Verify the new header is self-contained (compiles alone with the real toolchain)
 - [x] Replace a hand-rolled bottom-anchored text layout in game_1 (`IntroState`) with the engine `TextBlock`
 
 Checkpoint: Engine exposes reusable anchored text-block layout; consumers no longer reimplement measure/stack/align by hand.

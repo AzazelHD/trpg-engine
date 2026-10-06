@@ -1,141 +1,98 @@
 #pragma once
 
-#include "engine/input/KeyCode.h"
 #include "engine/math/Vec2.h"
-#include <SDL3/SDL.h>
+#include "engine/input/KeyCode.h"
 #include <cstdint>
 
-// Input polls SDL events and exposes a clean query API.
-// The game never calls SDL_PollEvent — only Input does.
+// =============================================================================
+// Input — Singleton input manager using SDL events.
+// =============================================================================
 //
-// [x]: Declare the class with:
-//   - pollEvents(): call once per frame at the top of the loop. Reads all SDL events.
-//                  Returns false if the user closed the window (quit event).
-//   - isKeyDown(KeyCode key): true every frame the key is held.
-//   - isKeyPressed(KeyCode key): true only on the first frame the key goes down.
-//   - isKeyReleased(KeyCode key): true only on the frame the key goes up.
-//   - getMousePosition(): current mouse position in window/screen pixels.
-//   - isMouseButtonDown(button): true while the requested SDL mouse button is held.
+// Responsibilities:
+//   - Poll SDL events each frame.
+//   - Maintain current key state (held down).
+//   - Accumulate key press, release, and repeat events per frame.
+//   - Expose clean query API: isKeyDown, isKeyPressed, isKeyReleased.
 //
-// Implementation hint: SDL gives you a snapshot via SDL_GetKeyboardState().
-// To detect "pressed this frame", compare current state vs. previous frame state.
-// Store two bool arrays: currentKeys[] and previousKeys[], swap after each poll.
+// Design notes:
+//   - Events are accumulated during pollEvents() into dedicated arrays.
+//   - isKeyPressed(KeyCode, bool allowRepeat) reads from accumulation arrays.
+//   - allowRepeat = true enables OS-level key repeat (useful for menus).
+//   - No reliance on SDL_GetKeyboardState; event-driven for reliability.
 //
-// [x]: Singleton pattern added:
-//   - instance() provides global access to the single Input system.
-//   - Avoids passing Input reference through all game systems.
-//   - Created lazily on first use (static local instance).
+// Singleton access via Input::instance().
+// =============================================================================
 
 class Input
 {
 public:
-    Input();
-
-    // [x]: Singleton accessor.
-    // Returns the single Input instance used by the engine.
+    // ── Singleton ──────────────────────────────────────────────────────────
     static Input &instance();
 
-    // [x]: Poll SDL events and update internal input state.
-    // Must be called once per frame before game update logic.
+    // Disallow copying and moving to strictly enforce the Singleton contract.
+    Input(const Input &) = delete;
+    Input &operator=(const Input &) = delete;
+    Input(Input &&) = delete;
+    Input &operator=(Input &&) = delete;
+
+    // ── Frame update ────────────────────────────────────────────────────────
+    // Poll all SDL events and update internal state.
+    // Returns false if the user closed the window (SDL_QUIT).
     bool pollEvents();
 
-    // [x]: Optional event hook.
-    // Currently unused; reserved for future extensions:
-    // - text input
-    // - mouse wheel
-    // - controller input
-    void handleEvent(const SDL_Event &event);
+    // ── Key state queries ──────────────────────────────────────────────────
 
-    // [x]: True while key is held down.
+    // True while the key is physically held down.
     bool isKeyDown(KeyCode key) const;
 
-    // [x]: True only on first frame key is pressed.
-    bool isKeyPressed(KeyCode key) const;
+    // True only on the first frame the key is pressed (or repeated if allowRepeat).
+    // - allowRepeat = false: only non-repeat presses (default, for actions).
+    // - allowRepeat = true:  includes OS key repeat events (for menu navigation).
+    bool isKeyPressed(KeyCode key, bool allowRepeat = false) const;
 
-    // [x]: True only on first frame key is released.
+    // Mark a key as consumed so that isKeyPressed() returns false
+    // for the remainder of this frame. Use after a handler has fully
+    // processed a press and no later handler in the same frame
+    // should see it.
+    void consumeKey(KeyCode key);
+
+    // True only on the frame the key is released.
     bool isKeyReleased(KeyCode key) const;
 
-    // [x]: Returns current mouse position in window space.
+    // ── Mouse queries ──────────────────────────────────────────────────────
+
+    // Current mouse position in window coordinates.
     Vec2f getMousePosition() const;
 
-    // [x]: True while mouse button is held.
+    // True while a mouse button is held (button: 1=left, 2=middle, 3=right).
     bool isMouseButtonDown(int button) const;
 
 private:
-    // [x]: Current frame keyboard state (SDL scancode indexed).
-    bool m_currentKeys[SDL_SCANCODE_COUNT] = {};
+    // ── Constructor (private for singleton) ──────────────────────────────
+    // Note: Memory is zeroed out automatically via in-class initializers.
+    Input();
 
-    // [x]: Previous frame keyboard state (used for edge detection).
-    bool m_previousKeys[SDL_SCANCODE_COUNT] = {};
+    // ── Constants ──────────────────────────────────────────────────────────
+    static constexpr int MAX_KEYS = 512; // covers all SDL scancodes.
 
-    // [x]: Current mouse position in screen/window coordinates.
+    // ── Key state arrays ──────────────────────────────────────────────────
+
+    // Current and previous frame key states (for hold/release detection).
+    bool m_currentKeys[MAX_KEYS] = {};
+    bool m_previousKeys[MAX_KEYS] = {};
+
+    // Event accumulation arrays (reset each frame in pollEvents()).
+    bool m_pressedThisFrame[MAX_KEYS] = {};  // non-repeat presses
+    bool m_releasedThisFrame[MAX_KEYS] = {}; // releases
+    bool m_repeatedThisFrame[MAX_KEYS] = {}; // OS key repeats
+    // If true, isKeyPressed() returns false for the rest of this frame.
+    // Cleared each frame in pollEvents().
+    bool m_consumedThisFrame[MAX_KEYS] = {};
+
+    // ── Mouse state ───────────────────────────────────────────────────────
     Vec2f m_mousePosition = {0.0f, 0.0f};
+    uint32_t m_mouseButtons = 0; // bitmask of currently held buttons
 
-    // [x]: Bitmask of current mouse button states.
-    uint32_t m_mouseButtons = 0;
-
-    // [x]: Convert engine KeyCode → SDL scancode.
-    // Used internally by all key query functions.
-    static SDL_Scancode keyCodeToScancode(KeyCode key)
-    {
-        switch (key)
-        {
-        // Navigation
-        case KeyCode::Up:
-            return SDL_SCANCODE_UP;
-        case KeyCode::Down:
-            return SDL_SCANCODE_DOWN;
-        case KeyCode::Left:
-            return SDL_SCANCODE_LEFT;
-        case KeyCode::Right:
-            return SDL_SCANCODE_RIGHT;
-
-        // WASD
-        case KeyCode::W:
-            return SDL_SCANCODE_W;
-        case KeyCode::A:
-            return SDL_SCANCODE_A;
-        case KeyCode::S:
-            return SDL_SCANCODE_S;
-        case KeyCode::D:
-            return SDL_SCANCODE_D;
-
-        // Actions
-        case KeyCode::Accept:
-            return SDL_SCANCODE_RETURN;
-        case KeyCode::Back:
-            return SDL_SCANCODE_ESCAPE;
-        case KeyCode::Pause:
-            return SDL_SCANCODE_P;
-        case KeyCode::Advance:
-            return SDL_SCANCODE_SPACE;
-
-        // Camera pan
-        case KeyCode::CameraPanUp:
-            return SDL_SCANCODE_KP_8;
-        case KeyCode::CameraPanDown:
-            return SDL_SCANCODE_KP_2;
-        case KeyCode::CameraPanLeft:
-            return SDL_SCANCODE_KP_4;
-        case KeyCode::CameraPanRight:
-            return SDL_SCANCODE_KP_6;
-
-        // Camera zoom
-        case KeyCode::CameraZoomIn:
-            return SDL_SCANCODE_KP_PLUS;
-        case KeyCode::CameraZoomOut:
-            return SDL_SCANCODE_KP_MINUS;
-
-        // Camera reset
-        case KeyCode::CameraReset:
-            return SDL_SCANCODE_KP_5;
-
-        // Debug
-        case KeyCode::DebugToggle:
-            return SDL_SCANCODE_F1;
-
-        default:
-            return SDL_SCANCODE_UNKNOWN;
-        }
-    }
+    // ── Internal helpers ──────────────────────────────────────────────────
+    static int keyCodeToScancode(KeyCode key);
 };

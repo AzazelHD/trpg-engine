@@ -22,7 +22,6 @@ engine/
 ├── tools/
 │   ├── build_debug.bat      # vcpkg + cmake --preset engine + build Debug
 │   ├── build_release.bat
-│   ├── check_public_headers.py  # self-containment check for include/engine/*
 │   └── vsenv.bat            # MSVC environment wrapper (also used by game_1 builds)
 ├── tests/                   # engine_tests: TiledJsonLoader/property-decode
 │   │                        # tests (standalone exe, no framework)
@@ -58,8 +57,10 @@ These are non-negotiable. Violating them breaks the engine/game boundary.
      Adding a `.cpp` requires editing it explicitly — no globbing.
 
 4. **Self-contained headers**
-   - Every public header must compile alone (verified by
-     `tools/check_public_headers.py`). Include what you use; `#pragma once`.
+   - Every public header must compile alone against the real toolchain
+     (C++20 + vcpkg includes). Include what you use; `#pragma once`.
+   - Confirmed by rebuilding the engine and its consumers, never by a
+     standalone script that ignores the build's compile flags.
 
 5. **Compose, don't duplicate**
    - New UI/layout helpers build on existing engine primitives
@@ -115,7 +116,6 @@ For detailed responsibilities see `ARCHITECTURE.md`. Quick roles:
 ```
 engine> tools\build_debug.bat     # vcpkg install + CMake configure + Debug build
 engine> tools\build_release.bat   # Release build
-engine> python tools\check_public_headers.py   # self-containment scan
 engine> ctest --test-dir build -C Debug  # runs engine_tests (when engine is the top-level project)
 ```
 

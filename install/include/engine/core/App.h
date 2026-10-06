@@ -1,54 +1,115 @@
 #pragma once
-#include <functional>
-#include <memory>
+
 #include "engine/core/Timer.h"
 
-// App is the top-level owner of the engine.
-// It initialises SDL, creates the Window, owns the main loop, and shuts everything down cleanly.
-//
-// [x]: Declare the class with:
-//   - A constructor that takes a window title, width, and height.
-//     Consumers may also pass a SceneFactory to provide the first scene without
-//     modifying engine internals.
-//   - A run() method: this is the entry point called from main(). It should not return until
-//     the user closes the game.
-//   - Private methods: processEvents(), update(float dt), render().
-//   - Private members: Window, Input, SceneStack (or similar) — only forward-declare here,
-//     include their headers in App.cpp to keep compile times low.
-//
-// Key concept: App drives the fixed-timestep loop. Look up the "accumulator pattern" —
-// you simulate the world in fixed 16ms steps, then render with an interpolation alpha
-// so motion is smooth even if render FPS differs from sim FPS.
+#include <functional>
+#include <memory>
 
-struct SDL_Renderer;
+// App is the top-level owner of the engine.
+// It initialises SDL, creates the Window (which owns the engine::Renderer),
+// owns the main loop, and shuts everything down cleanly.
+//
+// [x]: Constructor takes title/width/height + optional SceneFactory for the
+//       consumer's first scene, plus an explicit fixed-timestep rate and
+//       render frame-rate preset.
+// [x]: run() drives the fixed-timestep accumulator loop and never returns
+//       until the window is closed. A manual frame limiter caps render/
+//       present rate for the FPS presets; the VSync preset instead lets the
+//       display's vsync pace presentation (see Window::VSyncMode).
+// [x]: setFrameRatePreset()/getFrameRatePreset() — runtime-changeable so a
+//       future options menu can flip between 30/60/120/VSync without
+//       recreating the window.
+// [x]: getRenderer() returns engine::Renderer* (NOT SDL_Renderer*) — no SDL
+//       types are visible through App's public API.
+// [x]: showErrorDialog(title, message) — static helper wrapping
+//       SDL_ShowSimpleMessageBox, so callers (e.g. main.cpp) don't need SDL.
+// [x]: Private methods processEvents(), update(dt), render(alpha).
+// [x]: Private members Window, SceneStack — only forward-declared here.
+//       Input is a singleton (Input::instance()), so App does not own it.
+// [x]: Default UI font support — App stores a single Font pointer that
+//       all scenes can share, loaded once and cleaned up automatically.
 
 class Window;
-class Input;
 class Scene;
+class Renderer;
+class Font;
 template <typename T>
 class StateMachine;
+
+// Initial window state, decided by the game before App is constructed —
+// keeps App/Window ignorant of where these values came from (settings
+// file, CLI args, whatever). Engine has no knowledge of SettingsManager.
+struct WindowStartupConfig
+{
+    bool borderless = false;
+    int width = 0;
+    int height = 0;
+};
+
+// User-facing render frame-rate presets.
+// Fps30/Fps60/Fps120 use a manual frame limiter in App::run() and disable
+// Window vsync, giving an exact, monitor-independent cap (mixing a manual
+// limiter with hardware vsync causes double-pacing stutter, so the two are
+// kept mutually exclusive). VSync disables the manual limiter and enables
+// Window vsync instead, so presentation is paced by the display's refresh
+// rate (which is not guaranteed to be 60 — see Window::VSyncMode).
+enum class FrameRatePreset
+{
+    Fps30,
+    Fps60,
+    Fps120,
+    VSync,
+};
 
 class App
 {
 public:
+    static constexpr float kDefaultFixedStepSeconds = 1.0f / 60.0f;
+    static constexpr FrameRatePreset kDefaultFrameRatePreset = FrameRatePreset::Fps60;
+
     using SceneFactory = std::function<std::unique_ptr<Scene>()>;
 
-    // Pass an optional factory when the consumer wants App to bootstrap directly
-    // into its first game-owned scene.
-    App(const char *title, int width, int height, SceneFactory initialSceneFactory = {});
-    ~App();
+    // Invoked after SDL_Init succeeds but before the Window is created, so
+    // it's safe for game code to query things that need SDL video ready
+    // (e.g. native monitor resolution) without the engine exposing SDL or
+    // knowing where the returned config came from (settings file, CLI, etc).
+    using WindowConfigFactory = std::function<WindowStartupConfig()>;
 
-    // Main application loop
+    App(const char *title, int width, int height, SceneFactory initialSceneFactory = {},
+        float fixedStepSeconds = kDefaultFixedStepSeconds,
+        FrameRatePreset frameRatePreset = kDefaultFrameRatePreset,
+        WindowConfigFactory windowConfigFactory = {});
+    ~App();
     void run();
 
-    // Returns the SDL_Renderer owned by the window.
-    // Valid after construction; null before construction completes.
-    [[nodiscard]] static SDL_Renderer *getRenderer() noexcept;
+    // Changes the render frame-rate preset at runtime (e.g. from a future
+    // options menu). Updates both the manual limiter target and Window vsync.
+    void setFrameRatePreset(FrameRatePreset preset);
+    [[nodiscard]] FrameRatePreset getFrameRatePreset() const noexcept { return m_frameRatePreset; }
 
-    // Disable copy/move
+    // Returns the engine Renderer owned by the window.
+    // Valid after construction; null before construction completes.
+    [[nodiscard]] static Renderer *getRenderer() noexcept;
+    // Returns the Window owning the renderer (for setResizable/setAspectRatio etc.)
+    // Valid after construction; null before construction completes.
+    [[nodiscard]] static Window *getWindow() noexcept;
+    // Valid after construction; null before construction completes.
+    [[nodiscard]] static StateMachine<Scene> *getSceneStack() noexcept;
+    // Returns the live App instance, e.g. so a future menu scene can reach
+    // setFrameRatePreset(). Valid after construction; null before
+    // construction completes or after destruction.
+    [[nodiscard]] static App *getInstance() noexcept;
+
+    // Signals the main loop to stop after the current frame, the same way
+    // an OS-level quit event does — game code calls this instead of pushing
+    // SDL_EVENT_QUIT directly, so no game file needs <SDL3/SDL.h>.
+    static void requestQuit() noexcept;
+
+    // Native OS error dialog. Safe to call even if no App instance exists yet
+    // (e.g. from main()'s top-level catch block).
+    static void showErrorDialog(const char *title, const char *message);
     App(const App &) = delete;
     App &operator=(const App &) = delete;
-
     App(App &&) = delete;
     App &operator=(App &&) = delete;
 
@@ -59,14 +120,10 @@ private:
 
 private:
     bool m_running = true;
-
-    // Simulation timing defaults to 60 updates per second.
-    // Keeping these as members makes runtime tuning (settings menu) straightforward later.
-    float m_targetFps = 60.0f;
-    float m_fixedStep = 1.0f / 60.0f;
+    float m_fixedStep;
+    FrameRatePreset m_frameRatePreset;
+    float m_targetFrameSeconds; // 0 == uncapped manual (VSync preset); vsync paces it instead
     Timer m_timer;
-
     std::unique_ptr<Window> m_window;
-    std::unique_ptr<Input> m_input;
     std::unique_ptr<StateMachine<Scene>> m_sceneStack;
 };

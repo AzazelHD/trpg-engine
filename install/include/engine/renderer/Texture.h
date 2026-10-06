@@ -1,31 +1,34 @@
 #pragma once
-#include <SDL3/SDL.h>
-#include <SDL3_image/SDL_image.h>
 
-// Texture wraps an SDL_Texture. Loads from file, exposes dimensions.
-// Textures are created once and reused — never load the same file twice.
+// Texture wraps a GPU texture resource (opaque handle) + cached width/height.
 //
-// [x]: Declare the class with:
-//   - Constructor: Texture(SDL_Renderer* renderer, const char* filePath)
-//                  Use IMG_Load + SDL_CreateTextureFromSurface, then free the surface.
-//   - Destructor: SDL_DestroyTexture
-//   - getWidth(), getHeight() — read from SDL_QueryTexture in the constructor and cache.
-//   - getSDLTexture() — returns the raw SDL_Texture* (used internally by SpriteBatch).
+// Design rule:
+// - SDL is NOT exposed in this API.
+// - Created exclusively via Renderer::loadTexture() (friend access to the
+//   private default constructor + members).
+// - Destructor frees the backend GPU resource automatically.
 //
-// Design note: do NOT forward-declare SDL_Renderer/SDL_Texture in this header —
-// they are C structs and forward-declaration is messy. Just include SDL.h and SDL_image.h
-// only in Texture.cpp, and use void* or a pimpl if you want zero SDL in the header.
-// For simplicity at this stage, it's acceptable to include SDL here.
+// [x] Private default constructor - only Renderer (friend) can construct.
+// [x] Destructor: free backend GPU resource.
+// [x] getWidth()/getHeight().
+
 class Texture
 {
-private:
-    SDL_Texture *m_texture;
-    int m_width, m_height;
-
 public:
-    Texture(SDL_Renderer *renderer, const char *filePath);
     ~Texture();
+
+    Texture(const Texture &) = delete;
+    Texture &operator=(const Texture &) = delete;
+
     int getWidth() const;
     int getHeight() const;
-    SDL_Texture *getSDL_Texture() const;
+
+private:
+    friend class Renderer;
+
+    Texture() = default;
+
+    void *m_texture = nullptr;
+    int m_width = 0;
+    int m_height = 0;
 };

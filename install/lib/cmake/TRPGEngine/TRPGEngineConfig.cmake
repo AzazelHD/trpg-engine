@@ -25,10 +25,13 @@ endmacro()
 ####################################################################################
 
 include(CMakeFindDependencyMacro)
+
 find_dependency(SDL3 CONFIG REQUIRED)
 find_dependency(SDL3_image CONFIG REQUIRED)
 find_dependency(SDL3_mixer CONFIG REQUIRED)
 find_dependency(SDL3_ttf CONFIG REQUIRED)
 find_dependency(nlohmann_json CONFIG REQUIRED)
 
-include(${CMAKE_CURRENT_LIST_DIR}/TRPGEngineTargets.cmake)
+include("${CMAKE_CURRENT_LIST_DIR}/TRPGEngineTargets.cmake")
+
+check_required_components(TRPGEngine)

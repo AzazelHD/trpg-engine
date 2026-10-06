@@ -1,0 +1,253 @@
+#pragma once
+
+#include "engine/math/Vec2.h"
+#include "engine/math/Rect.h"
+#include "engine/renderer/Aligment.h"
+#include "engine/renderer/Font.h"
+#include "engine/renderer/Color.h"
+
+#include <string>
+#include <vector>
+
+class Font;
+class Texture;
+struct SDL_Renderer;
+
+// Renderer wraps SDL_Renderer and is the ONLY place draw calls + SDL color/blend
+// types are translated to/from engine types (Color, FColor, Rectf, Recti, Vec2f).
+//
+// Consumers (game states, UI widgets) never see SDL types: they pass Color/FColor/
+// Rectf/Vec2f and get back the same.
+//
+// -----------------------------------------------------------------------------
+// Construction
+// -----------------------------------------------------------------------------
+//
+// [x] Default ctor: leaves m_renderer null; Window assigns the real one
+//       after SDL_CreateRenderer succeeds.
+// [x] Constructor: Renderer(SDL_Renderer* renderer) - non-owning, App/Window owns it.
+//
+// -----------------------------------------------------------------------------
+// Frame
+// -----------------------------------------------------------------------------
+//
+// [x] clear(Color) - set draw color then SDL_RenderClear.
+// [x] present() - SDL_RenderPresent.
+//
+// -----------------------------------------------------------------------------
+// Configuration
+// -----------------------------------------------------------------------------
+//
+// [x] setLogicalPresentation(width, height, mode) - SDL_SetRenderLogicalPresentation.
+//       PresentationMode{Letterbox} is the only mode now — always preserves
+//       aspect ratio, no distortion. Extend if a state needs Overscan/
+//       IntegerScale later.
+//
+// -----------------------------------------------------------------------------
+// Render state
+// -----------------------------------------------------------------------------
+//
+// [x] setDrawColor(Color) / getDrawColor() - SDL_SetRenderDrawColor /
+//       SDL_GetRenderDrawColor.
+//
+// [x] setBlendMode(BlendMode) / getBlendMode() - SDL_SetRenderDrawBlendMode /
+//       SDL_GetRenderDrawBlendMode. Controls primitives and non-textured
+//       geometry. BlendMode{None, Blend, Add, Mod}: Add for glows/effects, Mod
+//       for multiplying. Textures are different — SDL_RenderTexture() reads the
+//       texture's own blend mode, so drawTexture() takes a per-draw override.
+//
+// -----------------------------------------------------------------------------
+// Geometry / primitives
+// -----------------------------------------------------------------------------
+//
+// [x] fillRect(Rectf) - SDL_RenderFillRect.
+// [x] drawRect(Rectf) - SDL_RenderRect (outline).
+// [x] drawLine(Vec2f, Vec2f) - SDL_RenderLine.
+// [x] fillCircle(Vec2f center, float radius) - filled disc (current draw color)
+//       via a 32-seg triangle fan sent to SDL_RenderGeometry. Smooth rim at
+//       both tiny dial dots and large placeholder sprites — never use a 1px
+//       scanline fill, it looks jagged. Matches fillRect: honors world vs
+//       logical pass (per-vertex transform) and blend state.
+//
+// [x] drawGeometry(vertices, indices) - generic textured/colored triangle list via
+//       SDL_RenderGeometry. Vertex{position: Vec2f, color: FColor}. Covers both the
+//       4-vert gradient quad (background) and 3-vert cursor highlight triangles
+//       currently hand-rolled in BattleState.
+//
+// -----------------------------------------------------------------------------
+// Textures
+// -----------------------------------------------------------------------------
+//
+// [x] loadTexture(filePath) - IMG_Load + SDL_CreateTextureFromSurface using
+//       m_renderer directly. Returns nullptr on failure. Caller owns the
+//       returned Texture* (delete when done).
+//
+// [x] getTextureSize(Texture*) - SDL_GetTextureSize, returns Vec2f.
+//
+// [x] setTextureAlphaMod(Texture*, float 0..1) - SDL_SetTextureAlphaModFloat.
+//
+// [x] setTextureScaleMode(Texture*, ScaleMode) - SDL_SetTextureScaleMode.
+//
+// [x] drawTexture(Texture*, src: Recti, dst: Rectf, flipH = false,
+//       tint: Color = white, blend: BlendMode = Blend) -
+//       SDL_RenderTexture / SDL_RenderTextureRotated(angle=0, flip=H)
+//       when flipH is true.
+//       `tint` is a per-channel RGB multiply (255 = unchanged), for buff/debuff
+//       recolours such as an enraged sprite going red. Alpha is not part of the
+//       tint — use setTextureAlphaMod() for that.
+//       `blend` combines the textured quad with what is behind it and applies
+//       to THIS draw only (SDL_RenderTexture() uses the texture's blend mode,
+//       not the renderer's draw blend mode). Both overrides are restored on
+//       exit, so a shared Texture is never left mutated.
+//
+// -----------------------------------------------------------------------------
+// Debug
+// -----------------------------------------------------------------------------
+//
+// [x] drawDebugText(Vec2f pos, text) - SDL_RenderDebugText.
+class Renderer
+{
+public:
+    enum class BlendMode
+    {
+        None,
+        Blend,
+        Add,
+        Mod
+    };
+
+    enum class ScaleMode
+    {
+        Nearest,
+        Linear
+    };
+
+    struct Vertex
+    {
+        Vec2f position;
+        FColor color;
+    };
+
+    // --- Construction ---
+    Renderer() = default;
+    explicit Renderer(SDL_Renderer *renderer);
+    ~Renderer();
+    Renderer(const Renderer &) = delete;
+    Renderer &operator=(const Renderer &) = delete;
+    Renderer(Renderer &&other) noexcept;
+    Renderer &operator=(Renderer &&other) noexcept;
+
+    // --- Frame ---
+    void clear(Color color);
+    void present();
+
+    // --- Configuration ---
+    enum class PresentationMode
+    {
+        Letterbox,
+    };
+
+    void setPresentationMode(PresentationMode mode);
+    void setLogicalPresentation(int width, int height, PresentationMode mode);
+    void setLogicalScaleMode(ScaleMode mode);
+
+    // Color drawn in the pillarbox/letterbox bars (the area outside the
+    // logical game rect on ultrawide/non-16:9 displays). Solid color for
+    // now — see endLogicalPass() for notes on gradient/blur/art alternatives.
+    void setLetterboxColor(Color color);
+    void beginLogicalPass();
+    void endLogicalPass();
+
+    // --- Render state ---
+    void setDrawColor(Color color);
+    Color getDrawColor() const;
+
+    void setBlendMode(BlendMode mode);
+    BlendMode getBlendMode() const;
+
+    // --- Geometry / primitives ---
+    void fillRect(Rectf rect);
+    void drawRect(Rectf rect);
+    void drawLine(Vec2f a, Vec2f b);
+    void fillCircle(Vec2f center, float radius);
+    void drawGeometry(const std::vector<Vertex> &vertices,
+                      const std::vector<int> &indices);
+
+    // --- Textures ---
+    Font *loadFont(const char *filePath, float size);
+
+    Texture *loadTexture(const char *filePath);
+
+    Vec2f getTextureSize(const Texture *texture) const;
+
+    void setTextureAlphaMod(const Texture *texture, float alpha);
+    void setTextureScaleMode(const Texture *texture, ScaleMode mode);
+
+    // Renders text using a font in a single immediate-mode call.
+    // Internally: TTF_RenderText_Blended → SDL_CreateTextureFromSurface → SDL_RenderTexture.
+    // No caching or batching; texture is recreated every call.
+    //
+    // Parameters:
+    // - font: font resource to use
+    // - text: UTF-8 string to render
+    // - pos: screen position
+    // - color: text color
+    // - bold/italic/underline: style flags applied per call
+    void renderText(const Font *font, const std::string &text, Vec2f pos, Color color,
+                    bool bold = false, bool italic = false, bool underline = false);
+
+    // Returns rendered text bounds for the given style flags.
+    Vec2f measureText(const Font *font, const std::string &text,
+                      bool bold = false, bool italic = false, bool underline = false) const;
+
+    // Maps engine alignment to SDL_ttf wrap alignment on a font resource.
+    bool setFontWrapAlignment(const Font *font, HorizontalAlign align) const;
+    HorizontalAlign getFontWrapAlignment(const Font *font) const;
+
+    // Computes a top-left point that places contentSize inside rect using the given alignment.
+    Vec2f alignInRect(Rectf rect, Vec2f contentSize,
+                      HorizontalAlign hAlign = HorizontalAlign::Left,
+                      VerticalAlign vAlign = VerticalAlign::Top) const;
+
+    // Renders single-line text aligned inside a rectangle.
+    void renderTextInRect(const Font *font,
+                          const std::string &text,
+                          Rectf rect,
+                          Color color,
+                          HorizontalAlign hAlign = HorizontalAlign::Left,
+                          VerticalAlign vAlign = VerticalAlign::Top,
+                          bool bold = false,
+                          bool italic = false,
+                          bool underline = false);
+
+    void drawTexture(const Texture *texture,
+                     Recti src,
+                     Rectf dst,
+                     bool flipH = false,
+                     Color tint = Color::white(),
+                     BlendMode blend = BlendMode::Blend);
+
+    // --- Debug ---
+    void drawDebugText(Vec2f pos, const std::string &text);
+
+private:
+    struct LetterboxTransform
+    {
+        float scaleX = 1.0f;
+        float scaleY = 1.0f;
+        float offsetX = 0.0f;
+        float offsetY = 0.0f;
+    };
+    PresentationMode m_presentationMode = PresentationMode::Letterbox;
+    Color m_letterboxColor{0, 0, 0, 255};
+    LetterboxTransform computeLetterboxTransform() const;
+    Rectf toNativeRect(Rectf logicalRect) const;
+    Vec2f toNativePos(Vec2f logicalPos) const;
+
+    SDL_Renderer *m_renderer = nullptr;
+    struct SDL_Texture *m_logicalTarget = nullptr;
+    int m_logicalW = 0;
+    int m_logicalH = 0;
+    ScaleMode m_logicalScaleMode = ScaleMode::Nearest;
+    bool m_inWorldPass = false;
+};

@@ -1,8 +1,10 @@
 #pragma once
+
+#include "engine/math/Vec2.h"
+
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
-#include "engine/math/Vec2.h"
 
 // Free utility functions for math used throughout the engine and game.
 // All functions are inline — bodies live right here, no .cpp needed.
@@ -80,6 +82,15 @@ inline Vec2f tileToIso(Vec2i tile, int tileW, int tileH)
     return Vec2f{x, y};
 }
 
+inline Vec2f tileToIso(Vec2f tile, int tileW, int tileH)
+{
+    const float halfTileW = tileW * 0.5f;
+    const float halfTileH = tileH * 0.5f;
+    const float x = (tile.x - tile.y) * halfTileW;
+    const float y = (tile.x + tile.y) * halfTileH;
+    return Vec2f{x, y};
+}
+
 // [x]: Implement isoToTile
 //   Vec2i isoToTile(Vec2f isoPos, int tileW, int tileH)
 //   Inverse of tileToIso at tile centers — converts a projected position back to a
@@ -103,4 +114,31 @@ inline Vec2i isoToTile(Vec2f iso, int tileW, int tileH)
     return Vec2i{
         static_cast<int>(std::round(x)),
         static_cast<int>(std::round(y))};
+}
+
+// --- ISOMETRIC DIRECTION (FFTA-style four diagonal facings) ---
+// On a 2:1 isometric grid (see tileToIso), a tile-space movement delta maps
+// to a screen diagonal:
+//   +x steps move right+down on screen (SouthEast)
+//   +y steps move left+down  on screen (SouthWest)
+//   -x steps move left+up    on screen (NorthWest)
+//   -y steps move right+up   on screen (NorthEast)
+// Pass a nonzero (dx, dy) tile delta to pick the facing a unit sprite should
+// use. A zero delta falls back to SouthWest (callers may want to keep facing).
+enum class IsoDirection
+{
+    NorthEast,
+    SouthEast,
+    SouthWest,
+    NorthWest
+};
+
+inline IsoDirection isoDirectionForTileDelta(Vec2i delta)
+{
+    const int screenDx = delta.x - delta.y;
+    const int screenDy = delta.x + delta.y;
+
+    if (screenDy >= 0)
+        return screenDx > 0 ? IsoDirection::SouthEast : IsoDirection::SouthWest;
+    return screenDx > 0 ? IsoDirection::NorthEast : IsoDirection::NorthWest;
 }

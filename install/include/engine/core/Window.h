@@ -1,47 +1,79 @@
 #pragma once
 
-// Window wraps an SDL_Window + SDL_Renderer pair.
-// The rest of the engine never touches SDL directly — they go through Window and Renderer wrappers.
-//
-// [x]: Declare the class with:
-//   - Constructor: Window(const char* title, int w, int h)
-//   - Destructor: must call SDL_DestroyRenderer and SDL_DestroyWindow
-//   - Getters: getSDLWindow(), getSDLRenderer(), getWidth(), getHeight()
-//   - Optional: setFullscreen(bool), setTitle(const char*)
-//
-// Important: do NOT include SDL.h in this header. Forward-declare SDL_Window and SDL_Renderer
-// as struct pointers so callers don't pull in all of SDL just from this header.
-// (You'll need SDL.h only in Window.cpp)
+#include "engine/renderer/Renderer.h"
 
+// Window wraps an SDL_Window + SDL_Renderer pair and owns the engine Renderer
+// built on top of that SDL_Renderer. The rest of the engine/game never touches
+// SDL_Window/SDL_Renderer directly - only Window and Renderer wrap them.
+//
+// [x] Constructor: SDL_CreateWindow + SDL_CreateRenderer + vsync, then wrap the
+//       SDL_Renderer* into m_renderer. VSyncMode is passed in (default Enabled)
+//       rather than hardcoded, so callers can opt into uncapped/adaptive modes.
+// [x] Destructor: SDL_DestroyRenderer + SDL_DestroyWindow.
+// [x] getRenderer(): primary draw entry point for the rest of the engine.
+// [x] getWidth() / getHeight().
+// [x] setFullscreen(bool) - SDL_SetWindowFullscreen.
+// [x] setTitle(const char*) - SDL_SetWindowTitle.
+// [x] setResizable(bool) - SDL_SetWindowResizable (replaces game-side
+//       SDL_GetRenderWindow + SDL_SetWindowResizable).
+// [x] setAspectRatio(min, max) - SDL_SetWindowAspectRatio.
+// [x] setVSync(VSyncMode) / getVSync() - runtime toggle so a future FPS/
+//       presentation preset menu can flip this without recreating the window.
+//
+// Note: getSDLWindow()/getSDLRenderer() were removed - nothing outside
+// Window/Renderer should hold raw SDL handles anymore.
 struct SDL_Window;
 struct SDL_Renderer;
+
+// Mirrors SDL_SetRenderVSync's int semantics directly, so the value can be
+// passed straight through without a translation table:
+// Disabled = 0, Enabled = 1 (every refresh), Adaptive = -1 (SDL_RENDERER_VSYNC_ADAPTIVE).
+enum class VSyncMode : int
+{
+    Disabled = 0,
+    Enabled = 1,
+    Adaptive = -1,
+};
+
+struct DisplayResolution
+{
+    int width = 0;
+    int height = 0;
+};
 
 class Window
 {
 public:
-    Window(const char *title, int w, int h);
+    Window(const char *title, int w, int h, VSyncMode vsync = VSyncMode::Enabled);
     ~Window();
-
-    // Disable copy
     Window(const Window &) = delete;
     Window &operator=(const Window &) = delete;
-
-    // Disable move (simplest safe option)
     Window(Window &&) = delete;
     Window &operator=(Window &&) = delete;
-
-    [[nodiscard]] SDL_Window *getSDLWindow() const;
-    [[nodiscard]] SDL_Renderer *getSDLRenderer() const;
+    [[nodiscard]] Renderer &getRenderer() { return m_renderer; }
     [[nodiscard]] int getWidth() const;
     [[nodiscard]] int getHeight() const;
-
     void setFullscreen(bool enabled);
     void setTitle(const char *title);
+    void setResizable(bool enabled);
+    void setAspectRatio(float minAspect, float maxAspect);
+    void setSize(int width, int height);
+    void maximize();
+    void setBorderless(bool enabled);
+    // Changes vsync on the live SDL_Renderer. Throws on failure (e.g. an
+    // unsupported mode on the current driver).
+    void setVSync(VSyncMode mode);
+    [[nodiscard]] VSyncMode getVSync() const { return m_vsync; }
+    void show();
+    // Returns the current desktop mode of the primary display.
+    // (0,0) on failure.
+    static DisplayResolution GetPrimaryDesktopResolution();
 
 private:
     SDL_Window *m_window = nullptr;
-    SDL_Renderer *m_renderer = nullptr;
-
-    const int m_width;
-    const int m_height;
+    SDL_Renderer *m_sdlRenderer = nullptr;
+    Renderer m_renderer;
+    int m_width;
+    int m_height;
+    VSyncMode m_vsync;
 };
