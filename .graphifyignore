@@ -10,3 +10,5 @@ todo.txt
 .clinerules
 AGENTS.md
 latest_debug_run.txt
+*.md
+CMakeLists.txt

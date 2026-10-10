@@ -72,11 +72,4 @@ Testing/
 latest_debug_run.txt
 
 # graphify
-graphify-out/cache/
-graphify-out/manifest.json
-graphify-out/cost.json
-graphify-out/*.html
-graphify-out/.graphify_*
-graphify-out/_step*.py
-graphify-out/20*/
-!graphify-out/.graphify_labels.json
+graphify-out/
