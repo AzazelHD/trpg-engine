@@ -236,6 +236,15 @@ void Camera::rebuildBoundsCache()
     m_boundsMin.y = std::min({c00.y, c10.y, c01.y, c11.y});
     m_boundsMax.x = std::max({c00.x, c10.x, c01.x, c11.x});
     m_boundsMax.y = std::max({c00.y, c10.y, c01.y, c11.y});
+
+    // Expand to the tiles' true diamond extents. The corners above are tile
+    // origins; each diamond spans half a tile width around its origin
+    // horizontally and reaches a full tile height below it. Without this the
+    // clamp pins the camera before edge/corner tiles (and the units standing
+    // on them) are fully on screen.
+    m_boundsMin.x -= m_tileW * 0.5f;
+    m_boundsMax.x += m_tileW * 0.5f;
+    m_boundsMax.y += m_tileH;
 }
 
 void Camera::clampToBounds()
@@ -250,11 +259,15 @@ void Camera::clampToBounds()
     const float viewW = m_viewportSize.x / z;
     const float viewH = m_viewportSize.y / z;
 
-    // Bounding rectangle of the projected map.
-    const float mapLeft = m_boundsMin.x;
-    const float mapRight = m_boundsMax.x;
-    const float mapTop = m_boundsMin.y;
-    const float mapBottom = m_boundsMax.y;
+    // Bounding rectangle of the projected map, padded so unit sprites (drawn
+    // above their tiles) stay on screen at the edges. The margin is configured
+    // in screen pixels (see setMapBoundsMargin) so it stays constant on screen
+    // at any zoom. Symmetric padding never moves small-map centering.
+    const float pad = m_boundsMarginPixels / z;
+    const float mapLeft = m_boundsMin.x - pad;
+    const float mapRight = m_boundsMax.x + pad;
+    const float mapTop = m_boundsMin.y - pad;
+    const float mapBottom = m_boundsMax.y + pad;
 
     const float mapW = mapRight - mapLeft;
     const float mapH = mapBottom - mapTop;

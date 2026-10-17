@@ -142,6 +142,12 @@ void Window::maximize()
         SDL_MaximizeWindow(m_window);
 }
 
+void Window::restore()
+{
+    if (m_window)
+        SDL_RestoreWindow(m_window);
+}
+
 void Window::setBorderless(bool enabled)
 {
     if (m_window)

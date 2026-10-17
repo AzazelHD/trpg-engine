@@ -59,6 +59,9 @@ public:
     void setAspectRatio(float minAspect, float maxAspect);
     void setSize(int width, int height);
     void maximize();
+    // Undoes maximize(): returns a maximized window to its normal floating
+    // state so setSize()/setPosition() take effect again. No-op otherwise.
+    void restore();
     void setBorderless(bool enabled);
     // Changes vsync on the live SDL_Renderer. Throws on failure (e.g. an
     // unsupported mode on the current driver).
