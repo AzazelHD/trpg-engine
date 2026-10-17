@@ -110,6 +110,7 @@ public:
     float getZoom() const { return m_zoom; }
     float getRenderScale() const { return m_renderScale; }
     Vec2f getOffset() const { return m_offset; }
+    Vec2f getViewportSize() const { return m_viewportSize; }
     Rotation getRotation() const { return m_rotation; }
 
     Vec2f getMapSize() const { return {m_mapBounds.w, m_mapBounds.h}; }

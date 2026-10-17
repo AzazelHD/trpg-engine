@@ -151,6 +151,23 @@ public:
     void setLogicalPresentation(int width, int height, PresentationMode mode);
     void setLogicalScaleMode(ScaleMode mode);
 
+    // Native output (drawable) size in pixels. Use for laying out content in
+    // real device pixels instead of the logical/design space.
+    Vec2i getOutputSize() const;
+
+    // Size of the world-pass render target created by setLogicalPresentation().
+    // Defaults to the logical (design) size. A state that renders its world at
+    // native resolution (crisp integer art scale) can resize it here; the
+    // target is then blitted 1:1, centred, by endLogicalPass(). The logical
+    // size — and therefore the UI/design transform — is left untouched.
+    void setWorldBufferSize(int width, int height);
+
+    // Draw directly in native output pixels, bypassing the logical/design
+    // transform. Used for content that lives outside the design play field
+    // (e.g. side rails/frames). Nest-free: call once with true, then false.
+    void beginNativeOverlay();
+    void endNativeOverlay();
+
     // Color drawn in the pillarbox/letterbox bars (the area outside the
     // logical game rect on ultrawide/non-16:9 displays). Solid color for
     // now — see endLogicalPass() for notes on gradient/blur/art alternatives.
@@ -241,6 +258,12 @@ private:
     PresentationMode m_presentationMode = PresentationMode::Letterbox;
     Color m_letterboxColor{0, 0, 0, 255};
     LetterboxTransform computeLetterboxTransform() const;
+    // Letterbox transform of the world-pass target (m_targetW/H) into the
+    // native output, used to place the world buffer blit.
+    Rectf targetBlitRect() const;
+    // True while draws must skip the logical/design transform and use raw
+    // native output pixels (the world pass and native overlays).
+    bool inNativeSpace() const { return m_inWorldPass || m_inNativeOverlay; }
     Rectf toNativeRect(Rectf logicalRect) const;
     Vec2f toNativePos(Vec2f logicalPos) const;
 
@@ -248,6 +271,9 @@ private:
     struct SDL_Texture *m_logicalTarget = nullptr;
     int m_logicalW = 0;
     int m_logicalH = 0;
+    int m_targetW = 0;
+    int m_targetH = 0;
     ScaleMode m_logicalScaleMode = ScaleMode::Nearest;
     bool m_inWorldPass = false;
+    bool m_inNativeOverlay = false;
 };
