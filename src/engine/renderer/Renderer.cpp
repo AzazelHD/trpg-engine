@@ -274,7 +274,7 @@ void Renderer::beginLogicalPass()
     SDL_RenderClear(m_renderer);
 }
 
-void Renderer::endLogicalPass()
+void Renderer::endWorldPass()
 {
     if (!m_logicalTarget)
         return;
@@ -283,30 +283,44 @@ void Renderer::endLogicalPass()
 
     SDL_SetTextureScaleMode(m_logicalTarget,
                             m_logicalScaleMode == ScaleMode::Linear ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+    // beginLogicalPass() clears the buffer to (0,0,0,0), so blend it over
+    // whatever backdrop the caller draws before blitWorldBuffer().
+    SDL_SetTextureBlendMode(m_logicalTarget, SDL_BLENDMODE_BLEND);
 
     // Paint the full native output first, so on non-16:9 displays (e.g.
     // ultrawide) the area outside the letterboxed game rect ends up in
     // m_letterboxColor rather than whatever a prior clear() call left behind.
     // This makes the bars independent of call order elsewhere in the frame.
     //
-    // Currently solid color only. To extend later:
-    //   - Gradient: replace this SDL_RenderClear with a drawGeometry() call
-    //     using a vertical strip of Vertices whose FColor varies top-to-bottom
-    //     (or left-right for the side bars specifically), instead of a flat fill.
+    // This is also the backdrop seam: between this clear and blitWorldBuffer()
+    // a caller may draw a full-window backdrop natively (sky gradient,
+    // parallax art) for the world to composite over. To extend later:
+    //   - Gradient: a drawGeometry() strip of Vertices whose FColor varies
+    //     top-to-bottom (or left-right for side bars), instead of a flat fill.
     //   - Blurred game content: capture/downsample m_logicalTarget's edge
     //     columns/rows into a small texture once per frame (or every N frames
-    //     for perf), then drawTexture() it stretched to cover the full native
-    //     rect *before* the sharp blit below — cheap "extended ambient" look
-    //     without a real blur shader.
-    //   - Static art: drawTexture() a fixed background texture stretched to
-    //     the full native output rect here, before the sharp game blit below.
-    //     Swap m_letterboxColor for a Texture* member in that case.
+    //     for perf), then drawTexture() it stretched over the full native rect
+    //     before the sharp blit — cheap "extended ambient" look without a
+    //     real blur shader.
+    //   - Static art / parallax: drawTexture() background textures stretched to
+    //     the full native output rect before the sharp blit below.
     SDL_SetRenderDrawColor(m_renderer, m_letterboxColor.r, m_letterboxColor.g, m_letterboxColor.b, m_letterboxColor.a);
     SDL_RenderClear(m_renderer);
+}
 
+void Renderer::blitWorldBuffer()
+{
+    if (!m_logicalTarget)
+        return;
     const Rectf dst = targetBlitRect();
     SDL_FRect sdlDst{dst.x, dst.y, dst.w, dst.h};
     SDL_RenderTexture(m_renderer, m_logicalTarget, nullptr, &sdlDst);
+}
+
+void Renderer::endLogicalPass()
+{
+    endWorldPass();
+    blitWorldBuffer();
 }
 
 Renderer::~Renderer()

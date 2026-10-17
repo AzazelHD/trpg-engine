@@ -173,6 +173,18 @@ public:
     // now — see endLogicalPass() for notes on gradient/blur/art alternatives.
     void setLetterboxColor(Color color);
     void beginLogicalPass();
+
+    // Ends the world pass: returns to the native output and clears it to the
+    // letterbox colour. This is the backdrop seam — draw a full-window backdrop
+    // (sky gradient, parallax art) natively between this and
+    // blitWorldBuffer(), so the world composites on top of it. Use
+    // endLogicalPass() when there is no backdrop to interleave.
+    void endWorldPass();
+
+    // Composites the world-pass buffer over the current output: 1:1, centred
+    // (its own letterbox transform), honouring the buffer's alpha.
+    void blitWorldBuffer();
+
     void endLogicalPass();
 
     // --- Render state ---
