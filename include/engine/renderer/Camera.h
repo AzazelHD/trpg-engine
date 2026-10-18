@@ -87,17 +87,26 @@ public:
 
     // How a map that fits the viewport on an axis is constrained there:
     //   Center - pin it to the middle of the viewport (the whole map is framed).
+    //            Decided on the *padded* extent, so a map that fits but has less
+    //            than the sprite margin to spare is treated as overflowing.
     //   Slide  - let it sit anywhere inside the viewport, so a caller tracking
     //            something *inside* the map (a cursor) can pan across the slack
     //            instead of the camera being pinned. The hard limit becomes the
     //            unpadded map extent (the map itself never leaves the view), so
     //            the sprite margin cannot always be honoured on a fitting map.
+    //   Frame  - pin it centred whenever the map fits the viewport *on its own*
+    //            (padded extent ignored). For a caller whose map art is taller
+    //            than its tile footprint (raised/stacked tiles, see
+    //            setMapBoundsTopExtra) this is the "show the whole thing" mode:
+    //            honoring the sprite margin there would let the clamp slide the
+    //            art out of the view instead of framing it.
     // An axis whose map does not fit even unpadded is clamped identically in
-    // both modes (padded extent inside the viewport).
+    // every mode (padded extent inside the viewport).
     enum class SmallMapFit
     {
         Center,
-        Slide
+        Slide,
+        Frame
     };
 
     void clampToBounds(SmallMapFit fit = SmallMapFit::Center);
@@ -122,6 +131,17 @@ public:
     void setEdgePanSpeed(float pixelsPerSecond);
     void setMapBoundsMargin(float screenPixels);
     float getMapBoundsMargin() const { return m_boundsMarginPixels; }
+
+    // Extra world-space height the map's art reaches above its tile anchors:
+    // raised/stacked tiles draw their surface `elevation` above the anchor and
+    // every tile's surface reaches some distance above it as well, while the
+    // bounds otherwise assume the art starts exactly at the top anchor row.
+    // Without it the clamp treats the anchor box as the art, so art above the
+    // top row is cut off at the viewport edge and a fitting map is centred on
+    // its anchors rather than on what is actually drawn. Zoom-independent (it is
+    // map geometry, like the tile size). Defaults to 0.
+    void setMapBoundsTopExtra(float worldUnits);
+    float getMapBoundsTopExtra() const { return m_boundsTopExtra; }
 
     // Access
     float getZoom() const { return m_zoom; }
@@ -157,6 +177,7 @@ private:
 
     float m_edgePanSpeed = 300.f;
     float m_boundsMarginPixels = 256.f;
+    float m_boundsTopExtra = 0.f;
 
     // SINGLE SOURCE OF TRUTH
     Rectf m_mapBounds{0.f, 0.f, 0.f, 0.f};

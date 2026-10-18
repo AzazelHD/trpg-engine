@@ -245,6 +245,21 @@ void Camera::rebuildBoundsCache()
     m_boundsMin.x -= m_tileW * 0.5f;
     m_boundsMax.x += m_tileW * 0.5f;
     m_boundsMax.y += m_tileH;
+
+    // Art the caller reports above the top anchors (raised/stacked tiles, plus
+    // however far a tile's own surface reaches above its anchor). It only ever
+    // extends upward, so only the top bound moves.
+    m_boundsMin.y -= m_boundsTopExtra;
+}
+
+void Camera::setMapBoundsTopExtra(float worldUnits)
+{
+    const float clamped = std::max(worldUnits, 0.f);
+    if (clamped == m_boundsTopExtra)
+        return;
+
+    m_boundsTopExtra = clamped;
+    rebuildBoundsCache();
 }
 
 void Camera::clampToBounds(SmallMapFit fit)
@@ -276,11 +291,19 @@ void Camera::clampToBounds(SmallMapFit fit)
     // may then use the slack the sprite margin was reserving to scroll, and the
     // map itself still stays inside the view. Maps that overflow even without
     // the margin keep the identical clamped behaviour in both modes.
-    const bool slidesX = fit == SmallMapFit::Slide && m_boundsMax.x - m_boundsMin.x <= viewW;
-    const bool slidesY = fit == SmallMapFit::Slide && m_boundsMax.y - m_boundsMin.y <= viewH;
+    const bool fitsX = m_boundsMax.x - m_boundsMin.x <= viewW;
+    const bool fitsY = m_boundsMax.y - m_boundsMin.y <= viewH;
+    const bool slidesX = fit == SmallMapFit::Slide && fitsX;
+    const bool slidesY = fit == SmallMapFit::Slide && fitsY;
+
+    // Frame mode decides on the unpadded extent (see SmallMapFit): a map that
+    // fits the viewport on its own is framed, margin or not. The centring term
+    // below is padding-symmetric, so it centres the art either way.
+    const bool centredX = fit == SmallMapFit::Frame ? fitsX : (mapW <= viewW);
+    const bool centredY = fit == SmallMapFit::Frame ? fitsY : (mapH <= viewH);
 
     // Horizontal
-    if (mapW <= viewW)
+    if (centredX)
     {
         if (slidesX)
         {
@@ -305,7 +328,7 @@ void Camera::clampToBounds(SmallMapFit fit)
     }
 
     // Vertical
-    if (mapH <= viewH)
+    if (centredY)
     {
         if (slidesY)
         {
