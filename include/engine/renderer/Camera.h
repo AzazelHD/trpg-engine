@@ -84,7 +84,23 @@ public:
     // Bounds (single source of truth)
     // mapWidth = tile columns, mapHeight = tile rows.
     void setMapSize(int mapWidth, int mapHeight);
-    void clampToBounds();
+
+    // How a map that fits the viewport on an axis is constrained there:
+    //   Center - pin it to the middle of the viewport (the whole map is framed).
+    //   Slide  - let it sit anywhere inside the viewport, so a caller tracking
+    //            something *inside* the map (a cursor) can pan across the slack
+    //            instead of the camera being pinned. The hard limit becomes the
+    //            unpadded map extent (the map itself never leaves the view), so
+    //            the sprite margin cannot always be honoured on a fitting map.
+    // An axis whose map does not fit even unpadded is clamped identically in
+    // both modes (padded extent inside the viewport).
+    enum class SmallMapFit
+    {
+        Center,
+        Slide
+    };
+
+    void clampToBounds(SmallMapFit fit = SmallMapFit::Center);
 
     // Zoom
     void setZoom(float zoom) { m_zoom = zoom; }

@@ -247,7 +247,7 @@ void Camera::rebuildBoundsCache()
     m_boundsMax.y += m_tileH;
 }
 
-void Camera::clampToBounds()
+void Camera::clampToBounds(SmallMapFit fit)
 {
 
     if (!hasMapBounds())
@@ -272,11 +272,28 @@ void Camera::clampToBounds()
     const float mapW = mapRight - mapLeft;
     const float mapH = mapBottom - mapTop;
 
+    // Sliding needs the *unpadded* map to fit, not just the padded one: a caller
+    // may then use the slack the sprite margin was reserving to scroll, and the
+    // map itself still stays inside the view. Maps that overflow even without
+    // the margin keep the identical clamped behaviour in both modes.
+    const bool slidesX = fit == SmallMapFit::Slide && m_boundsMax.x - m_boundsMin.x <= viewW;
+    const bool slidesY = fit == SmallMapFit::Slide && m_boundsMax.y - m_boundsMin.y <= viewH;
+
     // Horizontal
     if (mapW <= viewW)
     {
-        // Small map -> center it.
-        m_offset.x = mapLeft + (mapW - viewW) * 0.5f;
+        if (slidesX)
+        {
+            // The map fits: allow it anywhere inside the viewport. Centering
+            // here would pin the camera on a fitting axis and leave nothing to
+            // scroll to.
+            m_offset.x = std::clamp(m_offset.x, m_boundsMax.x - viewW, m_boundsMin.x);
+        }
+        else
+        {
+            // Small map -> center it.
+            m_offset.x = mapLeft + (mapW - viewW) * 0.5f;
+        }
     }
     else
     {
@@ -290,7 +307,14 @@ void Camera::clampToBounds()
     // Vertical
     if (mapH <= viewH)
     {
-        m_offset.y = mapTop + (mapH - viewH) * 0.5f;
+        if (slidesY)
+        {
+            m_offset.y = std::clamp(m_offset.y, m_boundsMax.y - viewH, m_boundsMin.y);
+        }
+        else
+        {
+            m_offset.y = mapTop + (mapH - viewH) * 0.5f;
+        }
     }
     else
     {
