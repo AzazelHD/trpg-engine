@@ -105,6 +105,7 @@ public:
     void setFollowEasing(FollowEasing easing);
     void setEdgePanSpeed(float pixelsPerSecond);
     void setMapBoundsMargin(float screenPixels);
+    float getMapBoundsMargin() const { return m_boundsMarginPixels; }
 
     // Access
     float getZoom() const { return m_zoom; }
