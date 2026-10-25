@@ -76,11 +76,7 @@ For detailed responsibilities see `ARCHITECTURE.md`. Quick roles:
 - `core/` — `App` (fixed-step loop + scene dispatch), `Window`, `Timer`, `Log`.
 - `input/` — `Input` (singleton key polling), `KeyCode`/`GamepadCode` vocabulary.
 - `math/` — `Vec2`, `Rect`, `MathUtils` (lerp/clamp/distance/iso helpers).
-- `renderer/` — `Renderer` (draw/text/passes), `Camera` (tile transforms,
-  follow/zoom/clamp), `Texture`/`Font`/`FontManager`, `SpriteBatch`,
-  `TileLayer`, `DebugRenderer`, `Color`/`FColor` (color types),
-  `Aligment.h` (`HorizontalAlign`/`VerticalAlign`; filename spelling is
-  historical, do not "fix" it without a migration note).
+- `renderer/` — `Renderer` (draw/text/passes; resolution-aware text scaling shared between rendering and measurement, with an optional scale factor for dynamic font sizing), `Camera` (tile transforms, follow/zoom/clamp), `Texture`/`Font`/`FontManager`, `SpriteBatch`, `TileLayer`, `DebugRenderer`, `Color`/`FColor` (color types), `Aligment.h` (`HorizontalAlign`/`VerticalAlign`; filename spelling is historical, do not "fix" it without a migration note).
 - `scene/` + `statemachine/` — `Scene` lifecycle; `StateMachine<T>`
   push/pop/replace with deferred mutation.
 - `ui/` — widgets (`Button`, `Slider`, `TextLabel`, `MenuPanel`), controls

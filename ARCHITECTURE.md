@@ -37,7 +37,7 @@ The engine must stay gameplay-agnostic. Game-specific rules, scene behavior, AI,
 
 ### Rendering (`include/engine/renderer`)
 
-- `Renderer`: SDL abstraction for drawing, text, textures, and logical/native pass boundaries. `drawTexture()` accepts a per-draw RGB tint and `BlendMode{None, Blend, Add, Mod}` override for recolours/effects.
+- `Renderer`: SDL abstraction for drawing, text, textures, and logical/native pass boundaries. `drawTexture()` accepts a per-draw RGB tint and `BlendMode{None, Blend, Add, Mod}` override for recolours/effects. Text rendering and measurement share resolution-aware font scaling through a common scale calculation, keeping layout measurements consistent with rendered text. Text APIs accept an optional scale factor (default `1.0f`) for dynamic font-size changes while preserving the existing default sizing behavior.
 - `Camera`: tile/screen transforms, follow/tracking, zoom, rotation, and clamping (`clampToBounds`, `getPanAxes` for which axes can pan).
 - `Texture`, `Font`, `FontManager`: texture/font asset interfaces.
 - `SpriteBatch`: queued sprite draw submission utility; forwards a per-command tint/blend through to `Renderer::drawTexture()`.
