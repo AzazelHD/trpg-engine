@@ -262,90 +262,55 @@ void Camera::setMapBoundsTopExtra(float worldUnits)
     rebuildBoundsCache();
 }
 
+Vec2f Camera::visibleWorldSize() const
+{
+    const float z = std::max(m_zoom, 0.0001f) * m_renderScale;
+    return {m_viewportSize.x / z, m_viewportSize.y / z};
+}
+
+// Bounding rectangle of the projected map, padded so unit sprites (drawn above
+// their tiles) stay on screen at the edges. The margin is configured in screen
+// pixels (see setMapBoundsMargin) so it stays constant on screen at any zoom.
+// Symmetric padding never moves small-map centering.
+Rectf Camera::paddedBounds() const
+{
+    const float z = std::max(m_zoom, 0.0001f) * m_renderScale;
+    const float pad = m_boundsMarginPixels / z;
+    return {m_boundsMin.x - pad, m_boundsMin.y - pad,
+            m_boundsMax.x - m_boundsMin.x + 2.f * pad,
+            m_boundsMax.y - m_boundsMin.y + 2.f * pad};
+}
+
+Camera::PanAxes Camera::getPanAxes() const
+{
+    if (!hasMapBounds())
+        return {};
+
+    const Rectf map = paddedBounds();
+    const Vec2f view = visibleWorldSize();
+    return {map.w > view.x, map.h > view.y};
+}
+
 void Camera::clampToBounds(SmallMapFit fit)
 {
-
     if (!hasMapBounds())
         return;
 
-    const float z = std::max(m_zoom, 0.0001f) * m_renderScale;
-
-    // Visible world size
-    const float viewW = m_viewportSize.x / z;
-    const float viewH = m_viewportSize.y / z;
-
-    // Bounding rectangle of the projected map, padded so unit sprites (drawn
-    // above their tiles) stay on screen at the edges. The margin is configured
-    // in screen pixels (see setMapBoundsMargin) so it stays constant on screen
-    // at any zoom. Symmetric padding never moves small-map centering.
-    const float pad = m_boundsMarginPixels / z;
-    const float mapLeft = m_boundsMin.x - pad;
-    const float mapRight = m_boundsMax.x + pad;
-    const float mapTop = m_boundsMin.y - pad;
-    const float mapBottom = m_boundsMax.y + pad;
-
-    const float mapW = mapRight - mapLeft;
-    const float mapH = mapBottom - mapTop;
-
-    // Sliding needs the *unpadded* map to fit, not just the padded one: a caller
-    // may then use the slack the sprite margin was reserving to scroll, and the
-    // map itself still stays inside the view. Maps that overflow even without
-    // the margin keep the identical clamped behaviour in both modes.
-    const bool fitsX = m_boundsMax.x - m_boundsMin.x <= viewW;
-    const bool fitsY = m_boundsMax.y - m_boundsMin.y <= viewH;
-    const bool slidesX = fit == SmallMapFit::Slide && fitsX;
-    const bool slidesY = fit == SmallMapFit::Slide && fitsY;
+    const Rectf map = paddedBounds();
+    const Vec2f view = visibleWorldSize();
 
     // Frame mode decides on the unpadded extent (see SmallMapFit): a map that
     // fits the viewport on its own is framed, margin or not. The centring term
     // below is padding-symmetric, so it centres the art either way.
-    const bool centredX = fit == SmallMapFit::Frame ? fitsX : (mapW <= viewW);
-    const bool centredY = fit == SmallMapFit::Frame ? fitsY : (mapH <= viewH);
+    const bool framing = fit == SmallMapFit::Frame;
+    const bool centredX = framing ? m_boundsMax.x - m_boundsMin.x <= view.x : map.w <= view.x;
+    const bool centredY = framing ? m_boundsMax.y - m_boundsMin.y <= view.y : map.h <= view.y;
 
-    // Horizontal
-    if (centredX)
-    {
-        if (slidesX)
-        {
-            // The map fits: allow it anywhere inside the viewport. Centering
-            // here would pin the camera on a fitting axis and leave nothing to
-            // scroll to.
-            m_offset.x = std::clamp(m_offset.x, m_boundsMax.x - viewW, m_boundsMin.x);
-        }
-        else
-        {
-            // Small map -> center it.
-            m_offset.x = mapLeft + (mapW - viewW) * 0.5f;
-        }
-    }
-    else
-    {
-        // Keep the map AABB inside the viewport.
-        const float minOffsetX = mapLeft;
-        const float maxOffsetX = mapRight - viewW;
-
-        m_offset.x = std::clamp(m_offset.x, minOffsetX, maxOffsetX);
-    }
-
-    // Vertical
-    if (centredY)
-    {
-        if (slidesY)
-        {
-            m_offset.y = std::clamp(m_offset.y, m_boundsMax.y - viewH, m_boundsMin.y);
-        }
-        else
-        {
-            m_offset.y = mapTop + (mapH - viewH) * 0.5f;
-        }
-    }
-    else
-    {
-        const float minOffsetY = mapTop;
-        const float maxOffsetY = mapBottom - viewH;
-
-        m_offset.y = std::clamp(m_offset.y, minOffsetY, maxOffsetY);
-    }
+    // Centre a fitting axis; otherwise keep the map AABB covering the viewport.
+    m_offset.x = centredX ? map.x + (map.w - view.x) * 0.5f
+                          : std::clamp(m_offset.x, map.x, map.x + map.w - view.x);
+    m_offset.y = centredY ? map.y + (map.h - view.y) * 0.5f
+                          : std::clamp(m_offset.y, map.y, map.y + map.h - view.y);
 }
 
 // =============================================================================

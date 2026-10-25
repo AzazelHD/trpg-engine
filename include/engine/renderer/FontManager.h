@@ -1,44 +1,62 @@
+
 #pragma once
+
 #include <array>
+#include <cstddef>
+#include <string>
 
 class Font;
 class Renderer;
 
 enum class FontRole
 {
-    Body,        // buttons, menu items, unit portrait stats (name/HP/MP), skill descriptions
-    Heading,     // slightly larger than Body — settings menu rows, main menu subsections
-    Title,       // largest — main menu title, victory/defeat banners
-    Placeholder, // large single-glyph placeholder art (unit circle+letter)
+    Body,        // Buttons, menu items, unit portrait stats and descriptions
+    Heading,     // Settings rows and menu subsections
+    Title,       // Main menu title and victory/defeat banners
+    Placeholder, // Large single-glyph placeholder art
     Count
 };
 
-// FontManager owns every Font the game uses, keyed by role instead of by
-// call site. Loaded once in BootState, consumed everywhere via get().
-// Fonts are never reloaded per-scene — see BootState::onEnter() for the
-// single loading point.
+// Owns the game's shared fonts.
+//
+// Role-based fonts are loaded once at boot.
+// Dynamically sized fonts can be requested by path and size.
+// FontManager owns all returned Font objects; callers must not delete them.
 class FontManager
 {
 public:
     static FontManager &instance();
 
-    // Loads every FontRole from the given path/size table. Safe to call
-    // once at boot; subsequent calls are no-ops if already loaded.
+    // Loads the predefined role fonts. Subsequent calls are no-ops
+    // while the manager remains loaded.
     void loadAll(Renderer *renderer);
 
-    // Returns the font for this role, or nullptr if loadAll() hasn't run
-    // yet or that specific font failed to load.
+    // Returns the font for a predefined role, or nullptr if unavailable.
     Font *get(FontRole role) const;
 
-    void clear(); // deletes all loaded fonts — called from App's dtor
+    // Returns a shared font for the requested file and point size.
+    // The returned pointer is owned by FontManager.
+    // Implementation will be added in FontManager.cpp.
+    Font *getSized(Renderer *renderer, const std::string &filePath, float size);
+
+    // Releases every font owned by this manager.
+    void clear();
 
     FontManager(const FontManager &) = delete;
     FontManager &operator=(const FontManager &) = delete;
+    FontManager(FontManager &&) = delete;
+    FontManager &operator=(FontManager &&) = delete;
 
 private:
     FontManager() = default;
-    ~FontManager() = default;
+    ~FontManager();
 
     std::array<Font *, static_cast<std::size_t>(FontRole::Count)> m_fonts{};
+
+    // Dynamic fonts are cached by path and size in the implementation.
+    // Using an opaque implementation keeps container details out of this header.
+    struct DynamicFontCache;
+    DynamicFontCache *m_dynamicCache = nullptr;
+
     bool m_loaded = false;
 };

@@ -214,7 +214,7 @@ public:
 
     // Renders text using a font in a single immediate-mode call.
     // Internally: TTF_RenderText_Blended → SDL_CreateTextureFromSurface → SDL_RenderTexture.
-    // No caching or batching; texture is recreated every call.
+    // No caching or batching; the texture is recreated on every call.
     //
     // Parameters:
     // - font: font resource to use
@@ -222,12 +222,15 @@ public:
     // - pos: screen position
     // - color: text color
     // - bold/italic/underline: style flags applied per call
+    // - scale: additional text scaling factor; 1.0f preserves the existing size
     void renderText(const Font *font, const std::string &text, Vec2f pos, Color color,
-                    bool bold = false, bool italic = false, bool underline = false);
+                    bool bold = false, bool italic = false, bool underline = false,
+                    float scale = 1.0f);
 
     // Returns rendered text bounds for the given style flags.
     Vec2f measureText(const Font *font, const std::string &text,
-                      bool bold = false, bool italic = false, bool underline = false) const;
+                      bool bold = false, bool italic = false, bool underline = false,
+                      float scale = 1.0f) const;
 
     // Maps engine alignment to SDL_ttf wrap alignment on a font resource.
     bool setFontWrapAlignment(const Font *font, HorizontalAlign align) const;
@@ -238,7 +241,7 @@ public:
                       HorizontalAlign hAlign = HorizontalAlign::Left,
                       VerticalAlign vAlign = VerticalAlign::Top) const;
 
-    // Renders single-line text aligned inside a rectangle.
+    // Renders single-line text aligned inside a rectangle, with optional scaling.
     void renderTextInRect(const Font *font,
                           const std::string &text,
                           Rectf rect,
@@ -247,7 +250,8 @@ public:
                           VerticalAlign vAlign = VerticalAlign::Top,
                           bool bold = false,
                           bool italic = false,
-                          bool underline = false);
+                          bool underline = false,
+                          float scale = 1.0f);
 
     void drawTexture(const Texture *texture,
                      Recti src,
@@ -267,6 +271,17 @@ private:
         float offsetX = 0.0f;
         float offsetY = 0.0f;
     };
+
+    struct TextScale
+    {
+        float originalFontSize;
+        float scaledFontSize;
+        float resolutionScale;
+    };
+
+    bool calculateTextScale(
+        const Font *font, float scale, TextScale &result) const;
+
     PresentationMode m_presentationMode = PresentationMode::Letterbox;
     Color m_letterboxColor{0, 0, 0, 255};
     LetterboxTransform computeLetterboxTransform() const;

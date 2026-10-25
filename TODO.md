@@ -68,6 +68,7 @@ Checkpoint: Engine can run a stable empty loop with input + logging.
 - [x] Extend Camera (later) — [Camera.h](include/engine/renderer/Camera.h) / [Camera.cpp](src/engine/renderer/Camera.cpp)
   - [x] zoom
     - [x] clampToBounds() with map-size bounds configured via `setMapSize(...)`
+    - [x] `getPanAxes()` reports pannable axes; `SmallMapFit::Slide` removed (migration: use `getPanAxes()` + `Center`/`Frame`). Public header change: sync `install/include/engine/renderer/Camera.h` when the install flow is used.
   - [x] smoothing (lerp follow)
 
 ---

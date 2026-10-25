@@ -559,9 +559,44 @@ void Renderer::setTextureScaleMode(const Texture *texture, ScaleMode mode)
             : SDL_SCALEMODE_NEAREST);
 }
 
-// [x] renderText(): TTF_RenderText_Blended -> surface -> texture -> render -> destroy.
+// [x] calculateTextScale(): Given a Font and a scale factor, compute the effective font size to use for rendering text, taking into account the current letterbox transform and resolution scaling. Returns true if the calculation was successful, false otherwise. The result is stored in the provided TextScale struct.
+bool Renderer::calculateTextScale(
+    const Font *font, float scale, TextScale &result) const
+{
+    if (!font || !font->m_font || !std::isfinite(scale) || scale <= 0.0f)
+        return false;
+
+    TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
+    const float originalFontSize = TTF_GetFontSize(ttfFont);
+
+    const LetterboxTransform t = inNativeSpace()
+                                     ? LetterboxTransform{1.0f, 1.0f, 0.0f, 0.0f}
+                                     : computeLetterboxTransform();
+
+    const float resolutionScale = (!m_inWorldPass && !m_inNativeOverlay)
+                                      ? std::min(t.scaleX, t.scaleY)
+                                      : 1.0f;
+
+    const float effectiveScale = resolutionScale * scale;
+
+    if (!std::isfinite(effectiveScale) || effectiveScale <= 0.0f)
+        return false;
+
+    const float scaledFontSize = originalFontSize * effectiveScale;
+
+    if (!std::isfinite(scaledFontSize) || scaledFontSize <= 0.0f)
+        return false;
+
+    result = TextScale{
+        originalFontSize,
+        scaledFontSize,
+        resolutionScale};
+    return true;
+}
+
+// [x] renderText(): Renders styled text with resolution-aware scaling and opacity.
 void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, Color color,
-                          bool bold, bool italic, bool underline)
+                          bool bold, bool italic, bool underline, float scale)
 {
     if (!font || !font->m_font || text.empty())
         return;
@@ -573,17 +608,20 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
     ScopedFontStyle styleGuard(ttfFont, toTTFStyle(bold, italic, underline));
 
-    // Rasterize at native pixel resolution for sharpness when scaled up
-    // (e.g. after a resolution change) — the resulting texture is then
-    // drawn 1:1 in physical pixels, so only its POSITION needs the
-    // letterbox transform below, never its size.
-    const float previousSize = TTF_GetFontSize(ttfFont);
-    const LetterboxTransform t = inNativeSpace() ? LetterboxTransform{1.0f, 1.0f, 0.0f, 0.0f} : computeLetterboxTransform();
-    // font size must stay uniform to avoid squashed/stretched glyphs
-    const float uniformScale = std::min(t.scaleX, t.scaleY);
+    // Rasterize at native pixel resolution for sharpness when scaled up.
+    // Only the position needs the letterbox transform below, never its size.
+    TextScale textScale;
+
+    if (!calculateTextScale(font, scale, textScale))
+        return;
+
     std::unique_ptr<ScopedFontSize> sizeGuard;
-    if (!m_inWorldPass && uniformScale > 0.0f && uniformScale != 1.0f)
-        sizeGuard = std::make_unique<ScopedFontSize>(ttfFont, previousSize * uniformScale);
+
+    if (textScale.scaledFontSize != textScale.originalFontSize)
+    {
+        sizeGuard = std::make_unique<ScopedFontSize>(
+            ttfFont, textScale.scaledFontSize);
+    }
 
     SDL_Color sdlColor{color.r, color.g, color.b, 255};
     SDL_Surface *surface = TTF_RenderText_Blended(ttfFont, text.c_str(), 0, sdlColor);
@@ -595,20 +633,13 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     if (!texture)
         return;
 
-    // Same as loadTexture(): without SDL_BLENDMODE_BLEND the per-pixel alpha
-    // baked in by TTF_RenderText_Blended is ignored and text renders fully
-    // opaque.
+    // Preserve per-pixel alpha from the rendered glyphs.
     SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
 
-    // TTF_RenderText_Blended ignores fg.a entirely — glyph alpha comes only
-    // from anti-aliasing coverage, never from the requested color's alpha
-    // (known, never-fixed SDL_ttf behavior; libsdl-org/SDL_ttf#70). So a fade
-    // passed via color.a silently rendered fully-opaque until the caller
-    // stopped drawing: a hard "flicker once" at erase. Apply the shade as a
-    // texture alpha mod (0-255), which SDL does honor.
+    // Apply the requested opacity through the texture alpha modulation.
     SDL_SetTextureAlphaMod(texture, color.a);
 
-    float w = 0.f, h = 0.f;
+    float w = 0.0f, h = 0.0f;
     SDL_GetTextureSize(texture, &w, &h);
 
     const Vec2f nativePos = inNativeSpace() ? pos : toNativePos(pos);
@@ -617,8 +648,9 @@ void Renderer::renderText(const Font *font, const std::string &text, Vec2f pos, 
     SDL_DestroyTexture(texture);
 }
 
+// [x] measureText(): Measures styled text using the same resolution-aware scaling as renderText().
 Vec2f Renderer::measureText(const Font *font, const std::string &text,
-                            bool bold, bool italic, bool underline) const
+                            bool bold, bool italic, bool underline, float scale) const
 {
     if (!font || !font->m_font || text.empty())
         return Vec2f{0.0f, 0.0f};
@@ -626,11 +658,28 @@ Vec2f Renderer::measureText(const Font *font, const std::string &text,
     TTF_Font *ttfFont = static_cast<TTF_Font *>(font->m_font);
     ScopedFontStyle styleGuard(ttfFont, toTTFStyle(bold, italic, underline));
 
-    int w = 0, h = 0;
+    TextScale textScale;
+
+    if (!calculateTextScale(font, scale, textScale))
+        return Vec2f{0.0f, 0.0f};
+
+    std::unique_ptr<ScopedFontSize> sizeGuard;
+
+    if (textScale.scaledFontSize != textScale.originalFontSize)
+    {
+        sizeGuard = std::make_unique<ScopedFontSize>(
+            ttfFont, textScale.scaledFontSize);
+    }
+
+    int w = 0;
+    int h = 0;
+
     if (!TTF_GetStringSize(ttfFont, text.c_str(), 0, &w, &h))
         return Vec2f{0.0f, 0.0f};
 
-    return Vec2f{static_cast<float>(w), static_cast<float>(h)};
+    return Vec2f{
+        static_cast<float>(w) / textScale.resolutionScale,
+        static_cast<float>(h) / textScale.resolutionScale};
 }
 
 bool Renderer::setFontWrapAlignment(const Font *font, HorizontalAlign align) const
@@ -707,11 +756,12 @@ void Renderer::renderTextInRect(const Font *font,
                                 VerticalAlign vAlign,
                                 bool bold,
                                 bool italic,
-                                bool underline)
+                                bool underline,
+                                float scale)
 {
-    const Vec2f textSize = measureText(font, text, bold, italic, underline);
+    const Vec2f textSize = measureText(font, text, bold, italic, underline, scale);
     const Vec2f pos = alignInRect(rect, textSize, hAlign, vAlign);
-    renderText(font, text, pos, color, bold, italic, underline);
+    renderText(font, text, pos, color, bold, italic, underline, scale);
 }
 
 // [x] drawTexture(): tint (texture color mod) + per-draw blend override, then

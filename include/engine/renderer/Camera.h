@@ -89,11 +89,6 @@ public:
     //   Center - pin it to the middle of the viewport (the whole map is framed).
     //            Decided on the *padded* extent, so a map that fits but has less
     //            than the sprite margin to spare is treated as overflowing.
-    //   Slide  - let it sit anywhere inside the viewport, so a caller tracking
-    //            something *inside* the map (a cursor) can pan across the slack
-    //            instead of the camera being pinned. The hard limit becomes the
-    //            unpadded map extent (the map itself never leaves the view), so
-    //            the sprite margin cannot always be honoured on a fitting map.
     //   Frame  - pin it centred whenever the map fits the viewport *on its own*
     //            (padded extent ignored). For a caller whose map art is taller
     //            than its tile footprint (raised/stacked tiles, see
@@ -105,11 +100,21 @@ public:
     enum class SmallMapFit
     {
         Center,
-        Slide,
         Frame
     };
 
     void clampToBounds(SmallMapFit fit = SmallMapFit::Center);
+
+    // Axes on which the padded map overflows the viewport, i.e. where
+    // clampToBounds(Center) leaves room to scroll. An axis that is not
+    // pannable is pinned centred, so panning it is pointless.
+    struct PanAxes
+    {
+        bool x = false;
+        bool y = false;
+        bool any() const { return x || y; }
+    };
+    PanAxes getPanAxes() const;
 
     // Zoom
     void setZoom(float zoom) { m_zoom = zoom; }
@@ -158,7 +163,8 @@ public:
 
 private:
     void rebuildBoundsCache();
-
+    Rectf paddedBounds() const;
+    Vec2f visibleWorldSize() const;
 private:
     // Camera transform
     Vec2f m_offset{0.f, 0.f};
